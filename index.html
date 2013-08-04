@@ -1,11 +1,300 @@
-<html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+<meta name="description" content="purify: next generation radio
+interferometric imaging" />
+<meta name="keywords" content="purify, sopt, radio, interferometry,
+imaging, compressive, compressed, sensing, sampling, convex,
+optimization, optimisation, fourier, imaging, fast, algorithms,
+rafael, carrillo, jason, mcewen, yves, wiaux" />
+<meta name="author" content="Jason McEwen / Design by Andreas Viklund - http://andreasviklund.com/" />
+<link rel="stylesheet" type="text/css" href="style.css" title="1024px style" media="screen,projection" />
+<title>purify</title>
+</head>
+
 <body>
-PURIFY: Next-generation radio interferometric imaging<br><br>
+<div id="wrap">
 
-Code available <a href="https://github.com/basp-group/purify">here</a>.<br><br>
+  
+<!--------------------------- HEADER --------------------------->
+<div id="header">
 
-Webpage coming soon...
+  <p id="toplinks">
+  <a href="#introduction">Introduction</a> |
+  <a href="#download">Download</a> |
+  <a href="#installation">Installation</a> |
+  <a href="#referencing">Referencing</a> |  
+  <a href="#license">License</a> |
+  <a href="#authors">Authors</a> 
+  </p>
+
+  <table border="0" cellspacing="0">
+    <tr>
+      <td width=200 align="right" valign="top">
+	<img src="images/logo.jpg" width="140" border=0> 
+      </td>
+      <td width=500 align="left" valign="center">
+	<h1 class="title">purify<span class="fade"></span></h1>
+	<p id="slogantitle">Next-generation radio interferometric imaging</p>
+      </td>			
+    </tr>
+  </table>
+
+</div>
 
 
+<!--------------------------- SIDEBAR --------------------------->
+<div id="sidebar">
+   
+<h2>News</h2>
+
+<ul>
+<li><strong>16 July 2013</strong><br />
+Public release of PURIFY.
+</li>
+</ul>
+
+</div>
+
+
+<!--------------------------- CONTENT --------------------------->
+<div id="content">
+
+<!--------------------------------------------------------------->
+<a name="introduction"><h2>Introduction</h2></a>
+
+  <p> <strong>PURIFY</strong> is an open-source code that provides
+  functionality to perform radio interferometric imaging, i.e. to
+  recover images from the incomplete Fourier measurements taken by
+  radio interferometric telescopes.  <strong>PURIFY</strong> leverages
+  recent developments in the field of compressive sensing and convex
+  optimization.
+
+  <p> <strong>PURIFY</strong> is written in C and contains the
+  high-level functionality required for radio interferometric imaging,
+  such as modelling radio telescopes and posing imaging as a convex
+  optimisation problem.  Low-level functionality to solve the
+  resulting convex optimisation is factored into the open-source
+  companion code, <a
+   href="http://basp-group.github.io/sopt/">SOPT</a>, also written by
+  the <a href="#authors">authors</a> of <strong>PURIFY</strong>.  For
+  further background please see the following <a
+   href="#referencing">papers</a>.
+
+  <p> This documentation outlines how to obtain
+  <strong>PURIFY</strong>, before describing installation details and
+  source code documentation.  Reference, license and author
+  information then follows.
+  
+
+
+<!--------------------------------------------------------------->
+<a name="download"><h2>Download</h2></a>
+
+  <p><strong>PURIFY</strong> is an open-source package
+  available under the license described <a
+   href="#license">below</a>.
+
+  <p>The <strong>PURIFY</strong> code is hosted by github and
+  available <a href="https://github.com/basp-group/purify">here</a>.
+  </p>
+
+  
+<!--------------------------------------------------------------->  
+<a name="installation"><h2>Installation</h2></a>
+
+  <p> The <strong>PURIFY</strong> code is written in C, hence a
+   suitable C compiler will be required to build the code.  In the
+   following the dependencies of <strong>PURIFY</strong> are
+   described, before outlining instructions to compile, test,
+   self-document and clean the code.
+
+ 
+   <h4>Dependencies</h4>
+
+  <p> <strong>PURIFY</strong> requires the <a
+    href="http://basp-group.github.io/sopt/">SOPT</a>, <a
+    href="http://www.fftw.org/">FFTW</a>, <a
+    href="http://heasarc.gsfc.nasa.gov/fitsio/">CFITSIO</a> and <a
+    href="http://www.libtiff.org/">LibTIFF</a> packages.  Please
+   ensure these are installed on your system before attempting to
+   install <strong>PURIFY</strong>. 
+
+
+  <h4>Compiling</h4>
+
+  <p> A makefile is provided to build the code.  Before compiling you
+  will need to edit the makefile to specify your compiler and the
+  location where the dependencies are installed (if all dependencies
+  are installed in the same parent directory as <strong>PURIFY</strong>
+  then it may not be necessary to edit the makefile).
+
+  <p> Once you have set the makefile up for your system,
+  <strong>PURIFY</strong> may be compiled by running:
+
+  <pre> >> make all</pre> 
+
+  <p> This will build the library, test program, and example programs.
+  If your system is configured to build all of these components then
+  you are done.  If you prefer to build only a subset of these
+  components then read on.
+
+  <p> You may alternatively build the individual components of
+  <strong>PURIFY</strong>.  To build the library only run:
+  <pre> >> make lib</pre> 
+  <p> To build the test program run:
+  <pre> >> make test</pre> 
+  <p> To build example programs run:
+  <pre> >> make prog</pre>
+
+
+  <h4>Testing</h4>
+
+  <p> Run the test program to verify your installation.  A default
+  test may be performed by running: <pre> >> make runtest</pre> <p> If
+  <strong>PURIFY</strong> is installed correctly the test program should
+  run and print test results to the terminal.
+
+  <p>Alternatively, you may run the test program directly by running:
+  <pre> >> ./bin/purify_test </pre>
+
+  <p>To check the version number of your installation run:
+  <pre> >> ./bin/purify_about </pre>
+
+  <h4>Documentation</h4>
+
+  <p>
+  The <strong>PURIFY</strong> code is self-documenting.  Although
+  documentation should be available in a standard checkout of the
+  code, html source documentation can be generated by running:
+  <pre> >> make doc</pre>
+
+  <p> Documentation is generated using <a
+   href="http://www.doxygen.org">doxygen</a>, thus you must have doxygen
+  installed on your system to generate the source documentation.
+
+
+  <h4>Cleaning up</h4>
+
+  <p> To clean up your version of the <strong>PURIFY</strong> code and
+  remove all builds run:
+  <pre> >> make clean</pre>
+
+  <p> To remove all source documentation run:
+  <pre> >> make cleandoc</pre>
+<br>
+
+
+<!--------------------------------------------------------------->
+<a name="referencing"><h2>Referencing</h2></a>
+
+  <p> If you use <strong>PURIFY</strong> for work that results in
+  publication, please reference this site (<a
+   href="http://basp-group.github.io/purify/">http://basp-group.github.io/purify/</a>)
+  and our related academic paper:
+
+<blockquote> R. E. Carrillo, J. D. McEwen and Y. Wiaux, <a
+  href="http://arxiv.org/abs/1307.4370">Why CLEAN when you can
+ PURIFY?</a>, <i>Mon. Not. Roy. Astron. Soc.</i>, submitted, 2013 (<a
+  href="http://arxiv.org/abs/1307.4370">ArXiv</a> | DOI
+ coming). </blockquote>
+
+<p> If you make use the SARA algorithm please also cite:
+
+<blockquote> R. E. Carrillo, J. D. McEwen and Y. Wiaux, <a
+   href="http://arxiv.org/abs/1205.3123">Sparsity Averaging
+  Reweighted Analysis (SARA): a novel algorithm for
+  radio-interferometric imaging</a>, <i>Mon. Not. Roy. Astron. Soc.</i>,
+  426(2):1223-1234, 2012 (<a
+   href="http://arxiv.org/abs/1205.3123">ArXiv</a> | <a
+   href="http://dx.doi.org/10.1111/j.1365-2966.2012.21605.x">DOI</a>). </blockquote>
+
+
+
+<!--------------------------------------------------------------->
+<a name="license"><h2>License</h2></a>
+
+<blockquote>  
+<p>
+PURIFY<br>
+Copyright (C) 2013 Rafael Carrillo, Jason McEwen, Yves Wiaux
+
+<p>
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or (at
+your option) any later version.
+
+<p>
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+General Public License for more details (<a href="LICENSE.txt">LICENSE.txt</a>).
+
+<p> 
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+02110-1301, USA.
+</blockquote>
+
+<!--------------------------------------------------------------->
+<a name="authors"><h2>About the authors</h2></a>
+
+<p> <strong>PURIFY</strong> has been developed by Rafael Carrillo,
+Jason McEwen and Yves Wiaux.  See the authors' web pages for more
+information.</p>
+
+  <p>
+  <img src="images/photo_rafael.jpg" width="100"
+  alt="Example frontpage image" class="left photobox" />
+
+  Dr Rafael Carrillo<br>
+  <a href="http://www.google.co.uk/search?q=Rafael Carrillo">Academic web page</a>
+  &raquo;</p>
+  </p>
+  
+  <br><br><br><br><br>
+  <br>
+
+  <p>
+  <img src="images/photo_jason.jpg" width="100"
+  alt="Example frontpage image" class="left photobox" />
+
+  Dr Jason McEwen<br>
+  <a href="http://www.jasonmcewen.org/">Academic web page</a>
+  &raquo;</p>
+  </p>
+  
+  <br><br><br><br><br>
+
+  <p>
+  <img src="images/photo_yves.jpg" width="100"
+  alt="Example frontpage image" class="left photobox" />
+
+  Dr Yves Wiaux<br>
+  <a href="http://www.google.co.uk/search?q=Yves Wiaux">Academic web page</a>
+  &raquo;</p>
+ 
+
+<br><br><br><br><br><br><br>
+
+</div>
+
+
+
+<!--------------------------- FOOTER --------------------------->
+<div id="footer">
+
+  <p>
+  <a href="#header">Back to top</a><br >
+  
+  <p>&copy; 2013 <a href="http://www.jasonmcewen.org">Jason McEwen</a> | Design by
+  <a href="http://andreasviklund.com/">Andreas Viklund</a> </p>
+
+
+
+</div>
 </body>
 </html>
