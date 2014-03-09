@@ -22,6 +22,7 @@ if(tests AND python)
     set_tests_properties(${SOURCE_NAME} PROPERTIES LABELS "nose")
   endfunction()
 
+
   # Finally, add the tests
   add_nose_test(test_descriptors.py)
 endif()
