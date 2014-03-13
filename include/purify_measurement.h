@@ -61,4 +61,19 @@ void purify_measurement_symcftfwd(void *out, void *in, void **data);
 
 void purify_measurement_symcftadj(void *out, void *in, void **data);
 
+//New functions
+void purify_measurement_init_cft2(purify_sparsemat_row *mat, 
+                                 double *deconv, complex double *shifts,
+                                 complex double *std, double *u, double *v, 
+                                 purify_measurement_cparam *param);
+
+void purify_measurement_symcftfwd(void *out, void *in, void **data);
+
+void purify_measurement_symcftadj(void *out, void *in, void **data);
+
+void purify_measurement_init_gram(purify_sparsemat_row *H, 
+                                 purify_sparsemat_row *G);
+
+void purify_measurement_cfthol(void *out, void *in, void **data);
+
 #endif

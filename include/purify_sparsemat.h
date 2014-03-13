@@ -23,7 +23,7 @@ typedef struct {
   int real; 
   /*! Non-zero elements traversed column by column. Real case*/
   double *vals;
-  /*! Non-zero elements traversed column by column. Real case*/
+  /*! Non-zero elements traversed column by column. Complex case*/
   complex double *cvals;
   /*! Row index of each non-zero entry. */
   int *rowind;
