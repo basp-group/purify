@@ -719,7 +719,7 @@ void purify_measurement_init_cft(purify_sparsemat_row *mat,
  */
 void purify_measurement_init_cft2(purify_sparsemat_row *mat, 
                                  double *deconv, complex double *shifts, 
-                                 complex double *std, double *u, double *v, 
+                                 double *u, double *v, 
                                  purify_measurement_cparam *param) {
 
   int i, j, k, l;
@@ -1140,8 +1140,8 @@ void purify_measurement_init_cft2(purify_sparsemat_row *mat,
 
     }
     //Computation of diagonal matrix storing theshifts and the inverse of the standard deviation
-    //shifts[i] = cexp(-I*(u[i]*((double)nx2/2.0) + v[i]*((double)ny2/2.0)))/cabs(std[i]);
-    shifts[i] = (1.0 +0.0*I)/cabs(std[i]);;
+    shifts[i] = cexp(-I*(u[i]*((double)nx2/2.0) + v[i]*((double)ny2/2.0)));
+    //shifts[i] = (1.0 +0.0*I)/cabs(std[i]);;
         
   }
 
