@@ -251,7 +251,8 @@ int main(int argc, char *argv[]) {
 
   // Initialize griding matrix.
   assert((start = clock())!=-1);
-  purify_measurement_init_cft2(&gmat, deconv, shifts, vis_test.noise_std, vis_test.u, vis_test.v, &param_m1);
+  //purify_measurement_init_cft2(&gmat, deconv, shifts, vis_test.noise_std, vis_test.u, vis_test.v, &param_m1);
+  purify_measurement_init_cft(&gmat, deconv, shifts, vis_test.u, vis_test.v, &param_m1);
   stop = clock();
   t = (double) (stop-start)/CLOCKS_PER_SEC;
   printf("Time initalization: %f \n\n", t);
@@ -316,12 +317,12 @@ int main(int argc, char *argv[]) {
 
   // Copy measured visibilities to y.
 //JDM: In future, just pass vis_test.y directly.
-  double TOL = 1e-10;
+  /*double TOL = 1e-10;
   for (i=0; i < vis_test.nmeas; i++){
     assert(cabs(vis_test.noise_std[i]) > TOL);
     //y[i] =  vis_test.y[i]/cabs(vis_test.noise_std[i]); 
     y[i] =  vis_test.y[i]*cexp(0.0 + I*(vis_test.u[i]*(-2048/2.0) + vis_test.v[i]*(-2048/2.0)))/cabs(vis_test.noise_std[i]); //vis_test.y[i];
-  }
+  } */
   // Rescale the measurements and deconv operator.
 //JDM: note sure why this is done
 

@@ -242,7 +242,8 @@ void purify_measurement_opfwd(void *out, void *in, void **data) {
  * \authors Rafael Carrillo
  */
 void purify_measurement_init_cft(purify_sparsemat_row *mat, 
-                                 double *deconv, double *u, double *v, 
+                                 double *deconv, complex double *shifts,
+                                 double *u, double *v, 
                                  purify_measurement_cparam *param) {
 
   int i, j, k, l;
@@ -662,6 +663,11 @@ void purify_measurement_init_cft(purify_sparsemat_row *mat,
       }
 
     }
+
+    //Computation of diagonal matrix storing the shifts 
+    temp1 = (double)param->nx1/2.0;
+    temp2 = (double)param->ny1/2.0;
+    shifts[i] = cexp(-I*(u[i]*temp1 + v[i]*temp2));
         
   }
 
@@ -1139,8 +1145,11 @@ void purify_measurement_init_cft2(purify_sparsemat_row *mat,
       }
 
     }
-    //Computation of diagonal matrix storing theshifts and the inverse of the standard deviation
-    shifts[i] = cexp(-I*(u[i]*((double)nx2/2.0) + v[i]*((double)ny2/2.0)));
+    //Computation of diagonal matrix storing the shifts and the inverse 
+    //of the standard deviation
+    temp1 = (double)param->nx1/2.0;
+    temp2 = (double)param->ny1/2.0;
+    shifts[i] = cexp(-I*(u[i]*temp1 + v[i]*temp2));
     //shifts[i] = (1.0 +0.0*I)/cabs(std[i]);;
         
   }
@@ -1152,12 +1161,12 @@ void purify_measurement_init_cft2(purify_sparsemat_row *mat,
 
   //Deconvolution kernel in image domain
    
-  u2[0] = -(double)param->nx1/2;
+  u2[0] = -(double)param->nx1/2.0;
   for (i=1; i < param->nx1; i++){
     u2[i] = u2[i-1] + 1.0;
   }
  
-  v2[0] = -(double)param->ny1/2;
+  v2[0] = -(double)param->ny1/2.0;
   for (i=1; i < param->ny1; i++){
     v2[i] = v2[i-1] + 1.0;
   }
@@ -1271,12 +1280,8 @@ void purify_measurement_cftfwd(void *out, void *in, void **data){
   fftw_execute_dft(*plan, temp, temp);
 
   //Multiplication by the sparse matrix storing the interpolation kernel
-  purify_sparsemat_fwd_complexr(yout, temp, mat);
-
-  //Multiplication by the shifts
-  for (j=0; j < param->nmeas; j++){
-    yout[j] = yout[j]*shifts[j];
-  }
+  //and the shifts 
+  purify_sparsemat_fwd_complexrsc(yout, temp, mat, shifts);
 
 }
 
@@ -1329,14 +1334,11 @@ void purify_measurement_cftadj(void *out, void *in, void **data){
   nx2 = param->ofx*param->nx1;
   ny2 = param->ofy*param->ny1;
 
-  //Multiplication by the shifts
-  for (j=0; j < param->nmeas; j++){
-    yin[j] = yin[j]*conj(shifts[j]);
-  }
-
+  
   //Multiplication by the adjoint of the 
   //sparse matrix storing the interpolation kernel
-  purify_sparsemat_adj_complexr(temp, yin, mat);
+  //and the shifts
+  purify_sparsemat_adj_complexrsc(temp, yin, mat, shifts);
 
   //Inverse FFT
   fftw_execute_dft(*plan, temp, temp);
