@@ -316,6 +316,11 @@ int main(int argc, char *argv[]) {
   
 
   // Copy measured visibilities to y.
+for (i=0; i < vis_test.nmeas; i++){
+    y[i] =  vis_test.y[i]; 
+  } 
+
+
 //JDM: In future, just pass vis_test.y directly.
   /*double TOL = 1e-10;
   for (i=0; i < vis_test.nmeas; i++){
