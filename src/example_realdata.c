@@ -307,13 +307,13 @@ int main(int argc, char *argv[]) {
   //sigma = a*pow(10.0,-(snr/20.0))/sqrt(Ny);
   sigma = 1.0;
 
-    
+  /*  
   for (i=0; i < Ny; i++) {
       noise[i] = (sopt_ran_gasdev2(seedn) + sopt_ran_gasdev2(seedn)*I)*(sigma/sqrt(2));
       y[i] = y0[i] + noise[i];
   }
 
-  
+*/  
 
   // Copy measured visibilities to y.
 for (i=0; i < vis_test.nmeas; i++){
@@ -616,7 +616,7 @@ for (i=0; i < vis_test.nmeas; i++){
   
   purify_image_writefile(&img_copy, "data/vsa/bpsa5.fits", filetype_img);
 
-  return 1;
+  //return 1;
 
   //Residual image
 
@@ -629,14 +629,15 @@ for (i=0; i < vis_test.nmeas; i++){
     img_copy.pix[i] = creal(xinc[i]);
   }
   
-  purify_image_writefile(&img_copy, "data/test/m31bpsares.fits", filetype_img);
+  purify_image_writefile(&img_copy, "data/vsa/bpsares.fits", filetype_img);
   
+  /*
   //Error image
   for (i=0; i < Nx; i++){
     img_copy.pix[i] = error[i];
   }
   
-  purify_image_writefile(&img_copy, "data/test/m31bpsaerror.fits", filetype_img);
+  purify_image_writefile(&img_copy, "data/vsa/bpsaerror.fits", filetype_img);
   
 
 
@@ -1129,7 +1130,7 @@ for (i=0; i < vis_test.nmeas; i++){
   
   purify_image_writefile(&img_copy, "data/test/m31rwbperror.fits", filetype_img);
 
-
+*/
   
   
   //Free all memory
