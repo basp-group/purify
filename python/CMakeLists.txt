@@ -13,7 +13,7 @@ add_to_python_path(${CMAKE_CURRENT_BINARY_DIR})
 
 add_definitions("-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION")
 
-include_directories(
+include_directories(SYSTEM
     ${PYTHON_INCLUDE_DIR}
     ${NUMPY_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}
@@ -37,27 +37,28 @@ add_custom_target(copy ALL)
 add_python_module(purify
     purify.visibility.pyx purify.image.pyx purify.sparse.pyx purify.sensing.pyx
     purify.fftw.pyx purify.sparsity_ops.pyx purify.sdmm.pyx purify.cparams.pyx
+    purify.base.pyx purify.padmm.pyx
     ${PYTHON_SOURCES} ${PXD_HEADERS}
     LIBRARIES libpurify
 )
-if(tests)
-    # Files only needed in testing. Added here cos here is where the copy
-    # target is defined.
-    add_copy_directory(copy
-        "${PROJECT_SOURCE_DIR}/data/"
-        GLOB *.vis *.fits
-        DESTINATION "${PYTHON_BINARY_DIR}/purify/data"
-    )
-    install_python(
-        DIRECTORY "${PROJECT_SOURCE_DIR}/data/"
-        DESTINATION ${PYTHON_PKG_DIR}/purify/data
-        FILES_MATCHING
-        PATTERN "images/Coverages/*.vis"
-        PATTERN "images/*.fits"
-        PATTERN "expected/*.fits"
-        PATTERN "test/*" EXCLUDE
-    )
-endif()
+
+# Files only needed in testing. Added here cos here is where the copy
+# target is defined.
+add_copy_directory(copy
+    "${PROJECT_SOURCE_DIR}/data/"
+    GLOB *.vis *.fits *.txt
+    DESTINATION "${PYTHON_BINARY_DIR}/purify/data"
+)
+install_python(
+    DIRECTORY "${PROJECT_SOURCE_DIR}/data/"
+    DESTINATION ${PYTHON_PKG_DIR}/purify/data
+    FILES_MATCHING
+    PATTERN "images/Coverages/*.vis"
+    PATTERN "images/*.fits"
+    PATTERN "expected/*.fits"
+    PATTERN "dirty/*.txt"
+    PATTERN "test/*" EXCLUDE
+)
 
 add_copy_files(copy
     FILES purify_image.xml task_purify_image.py

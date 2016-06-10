@@ -1,0 +1,7 @@
+include_directories("${PROJECT_SOURCE_DIR}/cpp" "${CMAKE_CURRENT_BINARY_DIR}/include/purify")
+file(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/outputs")
+add_catch_test(measurement_operator LIBRARIES cppurify)
+add_catch_test(FFT_operator LIBRARIES cppurify)
+add_catch_test(purify_fitsio LIBRARIES cppurify)
+add_catch_test(utils LIBRARIES cppurify)
+add_catch_test(sparse LIBRARIES cppurify)

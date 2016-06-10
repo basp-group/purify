@@ -1,4 +1,4 @@
-set(EXAMPLE_SOURCES example_30dor.c example_ami.c example_m31.c)
+set(EXAMPLE_SOURCES example_30dor.c example_ami.c example_m31.c example_m31_padmm.c example_realdata.c example_realdata_padmm.c)
 set(PURIFY_SOURCES
   purify_measurement.c purify_error.c purify_ran.c purify_utils.c
   purify_image.c purify_sparsemat.c purify_visibility.c
@@ -7,19 +7,21 @@ set(TEST_SOURCE purify_test.c)
 set(ABOUT_SOURCE purify_about.c)
 
 # Adds include directories
-include_directories(
+if(BLAS_INCLUDE_DIR)
+  include_directories(SYSTEM ${BLAS_INCLUDE_DIR})
+endif()
+if(Sopt_INCLUDE_DIRS)
+  include_directories(SYSTEM ${Sopt_INCLUDE_DIRS})
+endif()
+include_directories(SYSTEM
   ${FFTW3_INCLUDE_DIR}
   ${CFitsIO_INCLUDE_DIR}
   ${TIFF_INCLUDE_DIR}
-  ${Sopt_INCLUDE_DIRS}
 )
-if(BLAS_INCLUDE_DIR)
-  include_directories(${BLAS_INCLUDE_DIR})
-endif()
 
 # Target libraries for the different executables
 set(TARGET_LIBRARIES
-     ${Sopt_LIBRARIES}
+     ${Sopt_C_LIBRARY}
      ${FFTW3_DOUBLE_LIBRARY}
      ${CFitsIO_LIBRARY}
      ${TIFF_LIBRARY}
