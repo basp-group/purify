@@ -50,6 +50,9 @@ rafael, carrillo, jason, mcewen, yves, wiaux" />
 <h2>News</h2>
 
 <ul>
+  <li><strong>7 October 2016</strong><br />
+    Public release of PURIFY 2.0.0
+  </li>
 <li><strong>16 July 2013</strong><br />
 Public release of PURIFY.
 </li>
@@ -96,15 +99,15 @@ Public release of PURIFY.
   available under the license described <a
    href="#license">below</a>.
 
-  <p>The <strong>PURIFY</strong> code is hosted by github and
-  available <a href="https://github.com/basp-group/purify">here</a>.
+  <p>The latest version of <strong>PURIFY</strong> code is available
+  at <a href="https://github.com/basp-group/purify/releases/tag/v2.0.0">github</a>.
   </p>
 
   
 <!--------------------------------------------------------------->  
 <a name="installation"><h2>Installation</h2></a>
 
-  <p> The <strong>PURIFY</strong> code is written in C, hence a
+  <p> The <strong>PURIFY</strong> code is written in C++, hence a
    suitable C compiler will be required to build the code.  In the
    following the dependencies of <strong>PURIFY</strong> are
    described, before outlining instructions to compile, test,
@@ -113,76 +116,62 @@ Public release of PURIFY.
  
    <h4>Dependencies</h4>
 
-  <p> <strong>PURIFY</strong> requires the <a
-    href="http://basp-group.github.io/sopt/">SOPT</a>, <a
-    href="http://www.fftw.org/">FFTW</a>, <a
-    href="http://heasarc.gsfc.nasa.gov/fitsio/">CFITSIO</a> and <a
-    href="http://www.libtiff.org/">LibTIFF</a> packages.  Please
-   ensure these are installed on your system before attempting to
-   install <strong>PURIFY</strong>. 
+  <p> <strong>PURIFY</strong> requires the following software:
+<ul>
+<li><a href="http://www.cmake.org/">CMake</a>: a free software that allows cross-platform compilation</li>
+<li><a href="/astro-informatics/purify/blob/development/www.fftw.org">fftw3</a>: Fastest Fourier Transform in the West</li>
+<li><a href="http://www.libtiff.org/">tiff</a>: Tag Image File Format library</li>
+<li><a href="http://openmp.org/wp/">OpenMP</a>: Optional. Speeds up some of the operations.</li>
+<li><a href="http://casacore.github.io/casacore/">casacore</a>: Optional. Needed to interface with measurement
+sets. The main purify program requires this library (and its dependencies)</li>
+<li><a href="https://github.com/UCL/GreatCMakeCookOff">UCL/GreatCMakeCookOff</a>: Collection of cmake recipes.
+Downloaded automatically if absent.</li>
+<li><a href="https://github.com/basp-group/sopt">basp-group/sopt</a>: Sparse Optimization
+Compressed Sensing library. Downloaded automatically if absent.</li>
+<li><a href="http://eigen.tuxfamily.org/index.php?title=Main_Page">Eigen 3</a>: Modern C++ linear algebra.
+Downloaded automatically if absent.</li>
+<li><a href="https://github.com/gabime/spdlog">spdlog</a>: Optional. Logging library. Downloaded automatically if
+absent.</li>
+<li><a href="http://heasarc.gsfc.nasa.gov/fitsio/fitsio.html">cfitsio</a>: library of C and Fortran subroutines
+for reading and writing data files in FITS (Flexible Image Transport System) data format.
+Downloaded automatically if absent. Needed by CCFits.</li>
+<li><a href="http://heasarc.gsfc.nasa.gov/fitsio/ccfits/">CCFits</a>: c++ wrappers for cfitsio. Downloaded
+automatically if absent.</li>
+<li><a href="https://github.com/philsquared/Catch">philsquared/Catch</a>: Optional - only for testing. A C++
+unit-testing framework. Downloaded automatically if absent.</li>
+<li><a href="https://github.com/google/benchmar">google/benchmark</a>: Optional - only for benchmarks. A C++
+micro-benchmarking framework. Downloaded automatically if absent.</li>
+</ul>
+
+   Please ensure these are installed on your system before attempting to
+   install <strong>PURIFY</strong>.
 
 
   <h4>Compiling</h4>
 
-  <p> A makefile is provided to build the code.  Before compiling you
-  will need to edit the makefile to specify your compiler and the
-  location where the dependencies are installed (if all dependencies
-  are installed in the same parent directory as <strong>PURIFY</strong>
-  then it may not be necessary to edit the makefile).
+  <p>Once the dependencies are present, the program can be built with:
 
-  <p> Once you have set the makefile up for your system,
-  <strong>PURIFY</strong> may be compiled by running:
+  <pre><code> >> cd /path/to/code
+>> mkdir build
+>> cd build
+>> cmake -DCMAKE_BUILD_TYPE=Release ..
+>> make<code></pre> 
 
-  <pre> >> make all</pre> 
+<p>To test everything went all right:</p>
 
-  <p> This will build the library, test program, and example programs.
-  If your system is configured to build all of these components then
-  you are done.  If you prefer to build only a subset of these
-  components then read on.
+<pre><code>>> cd /path/to/code/build
+>> ctest .
+</code></pre>
 
-  <p> You may alternatively build the individual components of
-  <strong>PURIFY</strong>.  To build the library only run:
-  <pre> >> make lib</pre> 
-  <p> To build the test program run:
-  <pre> >> make test</pre> 
-  <p> To build example programs run:
-  <pre> >> make prog</pre>
+<p>To install in directory <code>/X</code>, with libraries going
+to <code>X/lib</code>, python modules to
+<code>X/lib/pythonA.B/site-packages/sopt</code>, etc, do:</p>
 
+<pre><code>>> cd /path/to/code/build
+>> cmake -DCMAKE_INSTALL_PREFIX=/X ..
+>> make install
+</code></pre>
 
-  <h4>Testing</h4>
-
-  <p> Run the test program to verify your installation.  A default
-  test may be performed by running: <pre> >> make runtest</pre> <p> If
-  <strong>PURIFY</strong> is installed correctly the test program should
-  run and print test results to the terminal.
-
-  <p>Alternatively, you may run the test program directly by running:
-  <pre> >> ./bin/purify_test </pre>
-
-  <p>To check the version number of your installation run:
-  <pre> >> ./bin/purify_about </pre>
-
-  <h4>Documentation</h4>
-
-  <p>
-  The <strong>PURIFY</strong> code is self-documenting.  Although
-  documentation should be available in a standard checkout of the
-  code, html source documentation can be generated by running:
-  <pre> >> make doc</pre>
-
-  <p> Documentation is generated using <a
-   href="http://www.doxygen.org">doxygen</a>, thus you must have doxygen
-  installed on your system to generate the source documentation.
-
-
-  <h4>Cleaning up</h4>
-
-  <p> To clean up your version of the <strong>PURIFY</strong> code and
-  remove all builds run:
-  <pre> >> make clean</pre>
-
-  <p> To remove all source documentation run:
-  <pre> >> make cleandoc</pre>
 <br>
 
 
@@ -192,13 +181,31 @@ Public release of PURIFY.
   <p> If you use <strong>PURIFY</strong> for work that results in
   publication, please reference this site (<a
    href="http://basp-group.github.io/purify/">http://basp-group.github.io/purify/</a>)
-  and our related academic paper:
+  and our related academic papers:
 
-<blockquote> R. E. Carrillo, J. D. McEwen and Y. Wiaux, <a
-  href="http://arxiv.org/abs/1307.4370">Why CLEAN when you can
- PURIFY?</a>, <i>Mon. Not. Roy. Astron. Soc.</i>, submitted, 2013 (<a
-  href="http://arxiv.org/abs/1307.4370">ArXiv</a> | DOI
- coming). </blockquote>
+<blockquote> R. E. Carrillo, J. D. McEwen and Y.
+  Wiaux, <a href="http://arxiv.org/abs/1307.4370">PURIFY: a new approach to
+  radio-interferometric imaging</a>, <i>Mon. Not. Roy. Astron. Soc.</i>,
+  439(4):3591-3604, 2014.<br>
+  <a href="http://arxiv.org/abs/1307.4370">ArXiv:1307.4370</a>
+  | <a href="http://dx.doi.org/10.1093/mnras/stu202">DOI:10.1093/mnras/stu202</a>
+</blockquote>
+
+<blockquote> A. Onose, R. E. Carrillo, A. Repetti, J. D. McEwen, J.-P. Thiran,
+  J.-C. Pesquet, and Y. Wiaux, <a href="http://arxiv.org/abs/1601.04026">Scalable
+  splitting algorithms for big-data interferometric imaging in the SKA era</a>,
+  <i>Mon. Not. Roy. Astron. Soc.</i>, 462(4):4314-4335, 2016. <br>
+  <a href="http://arxiv.org/abs/1601.04026">ArXiv:1601.04026</a>
+  | <a href="http://dx.doi.org/10.1093/mnras/stw1859">DOI:10.1093/mnras/stw1859</a>
+</blockquote>
+
+<blockquote> L. Pratley, J. D. McEwen, M. d'Avezac, R. E. Carrillo, A. Onose, Y.
+  Wiaux, <a href="http://arxiv.org/abs/1610.xxxx">Robust sparse image
+  reconstruction of radio interferometric observations with PURIFY
+    </a>, <i>Mon. Not. Roy. Astron. Soc.</i>, submitted, 2016.<br>
+  <a href="http://arxiv.org/abs/1610.xxxx">ArXiv:1610.xxxx</a>
+  | <a href="http://dx.doi.org/xxxxx">DOI: coming</a>
+</blockquote>
 
 <p> If you make use the SARA algorithm please also cite:
 
@@ -206,15 +213,16 @@ Public release of PURIFY.
    href="http://arxiv.org/abs/1205.3123">Sparsity Averaging
   Reweighted Analysis (SARA): a novel algorithm for
   radio-interferometric imaging</a>, <i>Mon. Not. Roy. Astron. Soc.</i>,
-  426(2):1223-1234, 2012 (<a
-   href="http://arxiv.org/abs/1205.3123">ArXiv</a> | <a
-   href="http://dx.doi.org/10.1111/j.1365-2966.2012.21605.x">DOI</a>). </blockquote>
+  426(2):1223-1234, 2012. <br>
+    <a href="http://arxiv.org/abs/1205.3123">ArXiv:1205.3123</a>
+    | <a href="http://dx.doi.org/10.1111/j.1365-2966.2012.21605.x">DOI:10.1111/j.1365-2966.2012.21605.x</a>
+  </blockquote>
 
 <blockquote>R. E. Carrillo, J. D. McEwen, D. Van De Ville, J.-P. Thiran,
     and Y. Wiaux.  <a href="">Sparsity averaging for compressive imaging</a>, <i>IEEE
-    Sig. Proc. Lett.</i>, 20(6): 591-594, 2013 (<a
-   href="http://arxiv.org/abs/1208.2330">ArXiv</a> | <a
-   href="http://dx.doi.org/10.1109/LSP.2013.2259813">DOI</a>).
+    Sig. Proc. Lett.</i>, 20(6): 591-594, 2013. <br>
+    <a href="http://arxiv.org/abs/1208.2330">ArXiv:1208.2330</a>
+   | <a href="http://dx.doi.org/10.1109/LSP.2013.2259813">DOI:10.1109/LSP.2013.2259813</a>
 </blockquote>
 
 <!--------------------------------------------------------------->
@@ -256,7 +264,7 @@ information.</p>
   alt="Example frontpage image" class="left photobox" />
 
   Dr Rafael Carrillo<br>
- <a href="http://people.epfl.ch/cgi-bin/people?id=215293&lang=en&cvlang=en">Academic
+ <a href="https://www.researchgate.net/profile/Rafael_Carrillo2">Academic
   web page</a> &raquo;</p>
   </p>
   
