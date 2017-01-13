@@ -118,7 +118,7 @@ namespace purify {
 
       std::valarray<double> image(naxes[0] * naxes[1] * eigen_images.size());
       for (int i = 0; i < eigen_images.size(); i++)
-        std::copy(eigen_images[i].data(), eigen_images[i].data() + eigen_images[i].size(), &image[naxes[1] * naxes[2] * i]);
+        std::copy(eigen_images[i].data(), eigen_images[i].data() + eigen_images[i].size(), &image[naxes[0] * naxes[1] * i]);
       // Writing to fits header
       pFits->pHDU().addKey("AUTHOR", "Purify", "");
       pFits->pHDU().addKey("BUNIT", header.pix_units, ""); // units
@@ -164,7 +164,7 @@ namespace purify {
       /*
          Writes a vector of images to a fits file.
 
-         image:: image data, a 2d Image.
+         image:: image data, a 3d Image.
          fits_name:: string containing the file name of the fits file.
          pix_units:: units of flux
          ra:: centre pixel coordinate in ra
@@ -174,8 +174,8 @@ namespace purify {
       if(overwrite == true) {
         remove(fits_name.c_str());
       };
-      long naxes[2] = {static_cast<long>(eigen_images[0].rows()), static_cast<long>(eigen_images[0].cols())};
-      std::unique_ptr<CCfits::FITS> pFits(new CCfits::FITS(fits_name, FLOAT_IMG, 2, naxes));
+      long naxes[3] = {static_cast<long>(eigen_images[0].rows()), static_cast<long>(eigen_images[0].cols()), static_cast<long>(eigen_images.size())};
+      std::unique_ptr<CCfits::FITS> pFits(new CCfits::FITS(fits_name, FLOAT_IMG, 3, naxes));
       long fpixel(1);
       std::vector<long> extAx = {eigen_images[0].rows(), eigen_images[0].cols()};
 
@@ -184,6 +184,10 @@ namespace purify {
         std::copy(eigen_images[i].data(), eigen_images[i].data() + eigen_images[i].size(), &image[naxes[0] * naxes[1] * i]);
       pFits->pHDU().addKey("AUTHOR", "Purify", "");
       pFits->pHDU().addKey("BUNIT", pix_units, "");
+      pFits->pHDU().addKey("NAXIS", 3, "");
+      pFits->pHDU().addKey("NAXIS1", naxes[0], "");
+      pFits->pHDU().addKey("NAXIS2", naxes[1], "");
+      pFits->pHDU().addKey("NAXIS3", eigen_images.size(), "");
       pFits->pHDU().write(fpixel, naxes[0] * naxes[1] * eigen_images.size(), image);
     }
     Image<t_complex> read2d(const std::string &fits_name) {
@@ -217,7 +221,8 @@ namespace purify {
       image.read(contents);
       t_int ax1(image.axis(0));
       t_int ax2(image.axis(1));
-      t_int channels_total(image.axis(3));
+      t_int channels_total;
+      image.readKey("NAXIS3", channels_total);
       std::vector<Image<t_complex>> eigen_images;
       for (int i = 0; i < channels_total; i++) {
         Image<t_complex> eigen_image(ax1, ax2);
