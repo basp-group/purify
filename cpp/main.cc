@@ -134,33 +134,45 @@ namespace {
   }
 
   void save_final_image(std::string const &outfile_fits, std::string const &residual_fits,
-      Vector<t_complex> const &x, utilities::vis_params const &uv_data,
+      std::vector<Image<t_complex>> const &x, utilities::vis_params const &uv_data,
       Params const &params, MeasurementOperator measurements) {
     //! Save final output image
     purify::pfitsio::header_params header = create_new_header(uv_data, params);
-    Image<t_complex> const image
-      = Image<t_complex>::Map(x.data(), measurements.imsizey(), measurements.imsizex());
     // header information
     header.pix_units = "JY/PIXEL";
     header.niters = params.iter;
     header.epsilon = params.epsilon;
     header.fits_name = outfile_fits + ".fits";
-    pfitsio::write2d_header(image.real(), header);
-    if(params.stokes_val == purify::casa::MeasurementSet::ChannelWrapper::polarization::P){
-      header.fits_name = outfile_fits + "_imag.fits";
-      pfitsio::write2d_header(image.real(), header);
+    std::vector<Image<t_real>> x_real;
+    for (int i = 0; i < x.size(); i++) {
+      x_real.push_back(x[i].real());
     }
-    Image<t_complex> residual = measurements
-      .grid(((uv_data.vis - measurements.degrid(image)).array()
-            * uv_data.weights.array().real())
-          .matrix())
-      .array();
+    pfitsio::write3d_header(x_real, header);
+    if(params.stokes_val == purify::casa::MeasurementSet::ChannelWrapper::polarization::P){
+      std::vector<Image<t_real>> x_imag;
+      for (int i = 0; i < x.size(); i++) {
+        x_imag.push_back(x[i].imag());
+      }
+      header.fits_name = outfile_fits + "_imag.fits";
+      pfitsio::write3d_header(x_imag, header);
+    }
+    std::vector<Image<t_real>> residuals_real;
+    std::vector<Image<t_real>> residuals_imag;
+    for (int i = 0; i < x.size(); i++) {
+      Image<t_complex> const residual = measurements
+        .grid(((uv_data.vis - measurements.degrid(x[i])).array()
+              * uv_data.weights.array().real())
+            .matrix()).array();
+      residuals_real.push_back(residual.real());
+      if(params.stokes_val == purify::casa::MeasurementSet::ChannelWrapper::polarization::P)
+        residuals_imag.push_back(residual.imag());
+    }
     header.pix_units = "JY/PIXEL";
     header.fits_name = residual_fits + ".fits";
-    pfitsio::write2d_header(residual.real(), header);
+    pfitsio::write3d_header(residuals_real, header);
     if(params.stokes_val == purify::casa::MeasurementSet::ChannelWrapper::polarization::P){
       header.fits_name = residual_fits + "_imag.fits";
-      pfitsio::write2d_header(residual.real(), header);
+      pfitsio::write3d_header(residuals_imag, header);
     }
   };
 
@@ -227,108 +239,115 @@ int main(int argc, char **argv) {
   std::size_t found = params.visfile.find_last_of(".");
   std::string format =  "." + params.visfile.substr(found+1);
   std::transform(format.begin(), format.end(), format.begin(), ::tolower);
-  auto uv_data = (format == ".ms") ? purify::casa::read_measurementset(params.visfile, params.stokes_val) : utilities::read_visibility(params.visfile, params.use_w_term);
-  bandwidth_scaling(uv_data, params);
+  std::vector<utilities::vis_params> uv_data_channels = (format == ".ms") ? purify::casa::read_measurementset_channels(params.visfile, params.stokes_val, 0) : std::vector<utilities::vis_params>{utilities::read_visibility(params.visfile, params.use_w_term)};
+  std::vector<Image<t_complex>> images;
+  std::vector<Image<t_complex>> dirty_image;
+  PURIFY_HIGH_LOG("Imaging {} planes ...", uv_data_channels.size());
+  for (t_uint i = 0; i < uv_data_channels.size(); i++) {
+    auto uv_data = uv_data_channels[i];
+    PURIFY_HIGH_LOG("Imaging plane {} ...", i);
+    bandwidth_scaling(uv_data, params);
 
-  // calculate weights outside of measurement operator
-  uv_data.weights = utilities::init_weights(
-      uv_data.u, uv_data.v, uv_data.weights, params.over_sample, params.weighting, 0,
-      params.over_sample * params.width, params.over_sample * params.height);
-  auto const noise_rms = estimate_noise(params);
-  auto const measurements = construct_measurement_operator(uv_data, params);
-  params.norm = measurements.norm;
-  auto const measurements_transform = linear_transform(measurements, uv_data.vis.size());
+    // calculate weights outside of measurement operator
+    uv_data.weights = utilities::init_weights(
+        uv_data.u, uv_data.v, uv_data.weights, params.over_sample, params.weighting, 0,
+        params.over_sample * params.width, params.over_sample * params.height);
+    auto const noise_rms = estimate_noise(params);
+    auto const measurements = construct_measurement_operator(uv_data, params);
+    params.norm = measurements.norm;
+    auto const measurements_transform = linear_transform(measurements, uv_data.vis.size());
 
-  sopt::wavelets::SARA const sara{
-    std::make_tuple("Dirac", 3u), std::make_tuple("DB1", 3u), std::make_tuple("DB2", 3u),
-      std::make_tuple("DB3", 3u),   std::make_tuple("DB4", 3u), std::make_tuple("DB5", 3u),
-      std::make_tuple("DB6", 3u),   std::make_tuple("DB7", 3u), std::make_tuple("DB8", 3u)};
+    sopt::wavelets::SARA const sara{
+      std::make_tuple("Dirac", 3u), std::make_tuple("DB1", 3u), std::make_tuple("DB2", 3u),
+        std::make_tuple("DB3", 3u),   std::make_tuple("DB4", 3u), std::make_tuple("DB5", 3u),
+        std::make_tuple("DB6", 3u),   std::make_tuple("DB7", 3u), std::make_tuple("DB8", 3u)};
 
-  auto const Psi = sopt::linear_transform<t_complex>(sara, params.height, params.width);
+    auto const Psi = sopt::linear_transform<t_complex>(sara, params.height, params.width);
 
-  PURIFY_LOW_LOG("Saving dirty map");
-  params.psf_norm = save_psf_and_dirty_image(measurements_transform, uv_data, params);
+    PURIFY_LOW_LOG("Saving dirty map");
+    params.psf_norm = save_psf_and_dirty_image(measurements_transform, uv_data, params);
 
-  auto const estimates = read_estimates(measurements_transform, uv_data, params);
-  t_real const epsilon = params.n_mu * std::sqrt(2 * uv_data.vis.size()) * noise_rms / std::sqrt(2); // Calculation of l_2 bound following SARA paper
-  params.epsilon = epsilon;
-  params.residual_convergence
-    = (params.residual_convergence < 0) ? 0. : params.residual_convergence * epsilon;
-  t_real purify_gamma = 0;
-  std::tie(params.iter, purify_gamma) = utilities::checkpoint_log(params.name + "_diagnostic");
-  if(params.iter == 0)
-    purify_gamma = (Psi.adjoint() * (measurements_transform.adjoint()
-          * (uv_data.weights.array() * uv_data.vis.array()).matrix()))
-      .cwiseAbs()
-      .maxCoeff()
-      * params.beta;
+    auto const estimates = read_estimates(measurements_transform, uv_data, params);
+    t_real const epsilon = params.n_mu * std::sqrt(2 * uv_data.vis.size()) * noise_rms / std::sqrt(2); // Calculation of l_2 bound following SARA paper
+    params.epsilon = epsilon;
+    params.residual_convergence
+      = (params.residual_convergence < 0) ? 0. : params.residual_convergence * epsilon;
+    t_real purify_gamma = 0;
+    std::tie(params.iter, purify_gamma) = utilities::checkpoint_log(params.name + "_diagnostic_" +  std::to_string(i));
+    if(params.iter == 0)
+      purify_gamma = (Psi.adjoint() * (measurements_transform.adjoint()
+            * (uv_data.weights.array() * uv_data.vis.array()).matrix()))
+        .cwiseAbs()
+        .maxCoeff()
+        * params.beta;
 
-  std::ofstream out_diagnostic;
-  out_diagnostic.precision(13);
-  out_diagnostic.open(params.name + "_diagnostic", std::ios_base::app);
+    std::ofstream out_diagnostic;
+    out_diagnostic.precision(13);
+    out_diagnostic.open(params.name + "_diagnostic", std::ios_base::app);
 
-  PURIFY_HIGH_LOG("Starting sopt!");
-  PURIFY_MEDIUM_LOG("Epsilon = {}", epsilon);
-  PURIFY_MEDIUM_LOG("Convergence criteria: Relative variation is less than {}.",
-      params.relative_variation);
-  if(params.residual_convergence > 0)
-    PURIFY_MEDIUM_LOG("Convergence criteria: Residual norm is less than {}.",
-        params.residual_convergence);
-  PURIFY_MEDIUM_LOG("Gamma = {}", purify_gamma);
-  auto padmm = sopt::algorithm::ImagingProximalADMM<t_complex>(uv_data.vis)
-    .gamma(purify_gamma)
-    .relative_variation(params.relative_variation)
-    .l2ball_proximal_epsilon(epsilon)
-    .l2ball_proximal_weights(uv_data.weights.array().real())
-    .tight_frame(false)
-    .l1_proximal_tolerance(1e-3)
-    .l1_proximal_nu(1)
-    .l1_proximal_itermax(100)
-    .l1_proximal_positivity_constraint(params.positive)
-    .l1_proximal_real_constraint(true)
-    .residual_convergence(params.residual_convergence)
-    .lagrange_update_scale(0.9)
-    .nu(1e0)
-    .Psi(Psi)
-    .Phi(measurements_transform);
+    PURIFY_HIGH_LOG("Starting sopt!");
+    PURIFY_MEDIUM_LOG("Epsilon = {}", epsilon);
+    PURIFY_MEDIUM_LOG("Convergence criteria: Relative variation is less than {}.",
+        params.relative_variation);
+    if(params.residual_convergence > 0)
+      PURIFY_MEDIUM_LOG("Convergence criteria: Residual norm is less than {}.",
+          params.residual_convergence);
+    PURIFY_MEDIUM_LOG("Gamma = {}", purify_gamma);
+    auto padmm = sopt::algorithm::ImagingProximalADMM<t_complex>(uv_data.vis)
+      .gamma(purify_gamma)
+      .relative_variation(params.relative_variation)
+      .l2ball_proximal_epsilon(epsilon)
+      .l2ball_proximal_weights(uv_data.weights.array().real())
+      .tight_frame(false)
+      .l1_proximal_tolerance(1e-3)
+      .l1_proximal_nu(1)
+      .l1_proximal_itermax(100)
+      .l1_proximal_positivity_constraint(params.positive)
+      .l1_proximal_real_constraint(true)
+      .residual_convergence(params.residual_convergence)
+      .lagrange_update_scale(0.9)
+      .nu(1e0)
+      .Psi(Psi)
+      .Phi(measurements_transform);
 
-  auto convergence_function = [](const Vector<t_complex> &x) { return true; };
-  AlgorithmUpdate algo_update(params, uv_data, padmm, out_diagnostic, measurements, Psi);
-  auto lambda = [&convergence_function, &algo_update](Vector<t_complex> const &x) {
-    return convergence_function(x) and algo_update(x);
-  };
-  Vector<t_complex> final_model = Vector<t_complex>::Zero(params.width * params.height);
-  std::string outfile_fits = "";
-  std::string residual_fits = "";
-  if(params.stokes_val != purify::casa::MeasurementSet::ChannelWrapper::polarization::I or params.gradient == "x" or params.gradient == "y")
-    padmm.l1_proximal_positivity_constraint(false);
-  if(params.stokes_val == purify::casa::MeasurementSet::ChannelWrapper::polarization::P)
-    padmm.l1_proximal_real_constraint(false);
-  if(params.algo_update)
-    padmm.is_converged(lambda);
-  if(params.niters != 0)
-    padmm.itermax(params.niters);
-  if(params.no_reweighted) {
-    auto const diagnostic = padmm(estimates);
-    outfile_fits = params.name + "_solution_" + params.weighting + "_final";
-    residual_fits = params.name + "_residual_" + params.weighting + "_final";
-    final_model = diagnostic.x;
-  } else {
-    auto const posq = sopt::algorithm::positive_quadrant(padmm);
-    auto const min_delta = noise_rms * std::sqrt(uv_data.vis.size())
-      / std::sqrt(9 * measurements.imsizey() * measurements.imsizex());
-    // Sets weight after each padmm iteration.
-    // In practice, this means replacing the proximal of the l1 objective function.
-    auto const reweighted
-      = sopt::algorithm::reweighted(padmm).itermax(10).min_delta(min_delta).is_converged(
-          sopt::RelativeVariation<std::complex<t_real>>(1e-3));
-    auto const diagnostic = reweighted();
-    outfile_fits = params.name + "_solution_" + params.weighting + "_final_reweighted";
-    residual_fits = params.name + "_residual_" + params.weighting + "_final_reweighted";
-    final_model = diagnostic.algo.x;
+    auto convergence_function = [](const Vector<t_complex> &x) { return true; };
+    AlgorithmUpdate algo_update(params, uv_data, padmm, out_diagnostic, measurements, Psi);
+    auto lambda = [&convergence_function, &algo_update](Vector<t_complex> const &x) {
+      return convergence_function(x) and algo_update(x);
+    };
+    Vector<t_complex> final_model = Vector<t_complex>::Zero(params.width * params.height);
+    std::string outfile_fits = "";
+    std::string residual_fits = "";
+    if(params.stokes_val != purify::casa::MeasurementSet::ChannelWrapper::polarization::I or params.gradient == "x" or params.gradient == "y")
+      padmm.l1_proximal_positivity_constraint(false);
+    if(params.stokes_val == purify::casa::MeasurementSet::ChannelWrapper::polarization::P)
+      padmm.l1_proximal_real_constraint(false);
+    if(params.algo_update)
+      padmm.is_converged(lambda);
+    if(params.niters != 0)
+      padmm.itermax(params.niters);
+    if(params.no_reweighted) {
+      auto const diagnostic = padmm(estimates);
+      outfile_fits = params.name + "_solution_" + params.weighting + "_final";
+      residual_fits = params.name + "_residual_" + params.weighting + "_final";
+      final_model = diagnostic.x;
+    } else {
+      auto const posq = sopt::algorithm::positive_quadrant(padmm);
+      auto const min_delta = noise_rms * std::sqrt(uv_data.vis.size())
+        / std::sqrt(9 * measurements.imsizey() * measurements.imsizex());
+      // Sets weight after each padmm iteration.
+      // In practice, this means replacing the proximal of the l1 objective function.
+      auto const reweighted
+        = sopt::algorithm::reweighted(padmm).itermax(10).min_delta(min_delta).is_converged(
+            sopt::RelativeVariation<std::complex<t_real>>(1e-3));
+      auto const diagnostic = reweighted();
+      outfile_fits = params.name + "_solution_" + params.weighting + "_final_reweighted";
+      residual_fits = params.name + "_residual_" + params.weighting + "_final_reweighted";
+      final_model = diagnostic.algo.x;
+    }
+    images.push_back(Image<t_complex>::Map(final_model.data(), measurements.imsizey(), measurements.imsizex()));
+    save_final_image(outfile_fits, residual_fits, images, uv_data, params, measurements);
+    out_diagnostic.close();
   }
-  save_final_image(outfile_fits, residual_fits, final_model, uv_data, params, measurements);
-  out_diagnostic.close();
-
   return 0;
 }
