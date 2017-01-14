@@ -14,8 +14,6 @@ namespace purify {
          overwrite:: if true, overwrites old fits file with same name
 
 */
-      if(header.channels_total != 1)
-        throw std::runtime_error("Writing 2D image, but header is for a 3D cube.");
       if(overwrite == true) {
         remove(header.fits_name.c_str());
       };
@@ -64,7 +62,7 @@ namespace purify {
       pFits->pHDU().addKey("PURIFY-EPSILON", header.epsilon, "");
 
       // Writing image to fits file
-      pFits->pHDU().write(fpixel, naxes[0] * naxes[1] * header.channels_total, image);
+      pFits->pHDU().write(fpixel, naxes[0] * naxes[1], image);
     }
 
     void write2d(const Image<t_real> &eigen_image, const std::string &fits_name,
@@ -105,13 +103,11 @@ namespace purify {
          overwrite:: if true, overwrites old fits file with same name
 
 */
-      if(header.channels_total != eigen_images.size())
-        throw std::runtime_error("Header has wrong number of channels.");
       if(overwrite == true) {
         remove(header.fits_name.c_str());
       };
       long naxes[4]
-        = {static_cast<long>(eigen_images[0].rows()), static_cast<long>(eigen_images[0].cols()), header.channels_total, 1};
+        = {static_cast<long>(eigen_images[0].rows()), static_cast<long>(eigen_images[0].cols()), static_cast<long>(eigen_images.size()), 1};
       std::unique_ptr<CCfits::FITS> pFits(new CCfits::FITS(header.fits_name, FLOAT_IMG, 4, naxes));
       long fpixel(1);
       std::vector<long> extAx = {eigen_images[0].rows(), eigen_images[0].cols()};
@@ -125,11 +121,11 @@ namespace purify {
       pFits->pHDU().addKey("NAXIS", 4, "");                // number of axes
       pFits->pHDU().addKey("NAXIS1", static_cast<t_int>(eigen_images[0].cols()), "");
       pFits->pHDU().addKey("NAXIS2", static_cast<t_int>(eigen_images[0].rows()), "");
-      pFits->pHDU().addKey("NAXIS3", header.channels_total, "");
+      pFits->pHDU().addKey("NAXIS3", eigen_images.size(), "");
       pFits->pHDU().addKey("NAXIS4", 1, "");
       pFits->pHDU().addKey("CRPIX1", static_cast<t_int>(std::floor(eigen_images[0].cols() / 2)) + 1, "");
       pFits->pHDU().addKey("CRPIX2", static_cast<t_int>(std::floor(eigen_images[0].rows() / 2)) + 1, "");
-      pFits->pHDU().addKey("CRPIX3", header.channels_total, "");
+      pFits->pHDU().addKey("CRPIX3", 1, "");
       pFits->pHDU().addKey("CRPIX4", header.polarisation, "");
       pFits->pHDU().addKey("CRVAL1", header.ra * 180. / purify::constant::pi, "");
       pFits->pHDU().addKey("CRVAL2", header.dec * 180. / purify::constant::pi, "");

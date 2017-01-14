@@ -22,7 +22,6 @@ namespace purify {
       t_int pix_ref_x = 0;
       t_int pix_ref_y = 0;
       std::string pix_units = "Jy/BEAM";
-      t_int channels_total = 1;
       t_real channel_width = 8; // in MHz
       t_int polarisation = 1;
       t_int niters = 0; // number of iterations
