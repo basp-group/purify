@@ -286,7 +286,8 @@ namespace purify {
       //Read and average the channels into a vector of vis_params
       std::vector<utilities::vis_params> channels_vis;
       auto const ms_file = purify::casa::MeasurementSet(filename);
-      t_int const planes = ms_file.size() / channel_width;
+
+      t_int const planes = (channel_width == 0) ? 1 : ms_file.size() / channel_width;
       for (int i = 0; i < planes; i++) {
         const Vector<t_int> temp_block = Vector<t_int>::LinSpaced(1, i * channel_width, channel_width);
         auto const block = std::vector<t_int>(temp_block.data(), temp_block.data() + temp_block.size());
