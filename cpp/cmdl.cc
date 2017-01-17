@@ -190,6 +190,9 @@ break;
     case '4':
       params.positive = false;
       break;
+    case '5':
+      params.channel_averaging = std::stod(optarg);
+      break;
     case '?':
       /* getopt_long already printed an error message. */
       break;

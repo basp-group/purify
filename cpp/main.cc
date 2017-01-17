@@ -105,7 +105,8 @@ namespace {
   }
   t_real save_psf_and_dirty_image(
       sopt::LinearTransform<sopt::Vector<sopt::t_complex>> const &measurements,
-      purify::utilities::vis_params const &uv_data, purify::Params const &params) {
+      purify::utilities::vis_params const &uv_data, purify::Params const &params,
+      std::vector<Image<t_real>> & dirty_cube, std::vector<Image<t_real>> & dirty_cube_imag, std::vector<Image<t_real>> & psf_cube) {
     // returns psf normalisation
     purify::pfitsio::header_params header = create_new_header(uv_data, params);
     std::string const dirty_image_fits = params.name + "_dirty_" + params.weighting;
@@ -117,18 +118,21 @@ namespace {
     psf = psf;//not normalised, so it is easy to compare scales
     header.fits_name = psf_fits + ".fits";
     PURIFY_HIGH_LOG("Saving {}", header.fits_name);
-    pfitsio::write2d_header(psf, header);
+    psf_cube.push_back(psf);
+    pfitsio::write3d_header(psf_cube, header);
     Vector<t_complex> const dirty_image
       = measurements.adjoint() * (uv_data.weights.array() * uv_data.vis.array());
     Image<t_complex> dimage
       = Image<t_complex>::Map(dirty_image.data(), params.height, params.width);
+    dirty_cube.push_back(dimage.real());
     header.fits_name = dirty_image_fits + ".fits";
     PURIFY_HIGH_LOG("Saving {}", header.fits_name);
-    pfitsio::write2d_header(dimage.real(), header);
+    pfitsio::write3d_header(dirty_cube, header);
     if(params.stokes_val == purify::casa::MeasurementSet::ChannelWrapper::polarization::P){
       header.fits_name = dirty_image_fits + "_imag.fits";
       PURIFY_HIGH_LOG("Saving {}", header.fits_name);
-      pfitsio::write2d_header(dimage.imag(), header);
+      dirty_cube_imag.push_back(dimage.imag());
+      pfitsio::write3d_header(dirty_cube_imag, header);
     }
     return max_val;
   }
@@ -178,14 +182,14 @@ namespace {
 
   std::tuple<Vector<t_complex>, Vector<t_complex>>
     read_estimates(sopt::LinearTransform<sopt::Vector<sopt::t_complex>> const &measurements,
-        purify::utilities::vis_params const &uv_data, purify::Params const &params) {
+        purify::utilities::vis_params const &uv_data, purify::Params const &params, t_uint const channel_number) {
       Vector<t_complex> initial_estimate
         = measurements.adjoint() * (uv_data.weights.array() * uv_data.vis.array());
       Vector<t_complex> initial_residuals = Vector<t_complex>::Zero(uv_data.vis.size());
       // loading data from check point.
-      if(utilities::file_exists(params.name + "_diagnostic") and params.warmstart == true) {
+      if(utilities::file_exists(params.name + "_diagnostic_" + std::to_string(channel_number)) and params.warmstart == true) {
         PURIFY_HIGH_LOG("Loading checkpoint for {}", params.name.c_str());
-        std::string const outfile_fits = params.name + "_solution_" + params.weighting + "_update.fits";
+        std::string const outfile_fits = params.name + "_solution_" + params.weighting + "_update" + std::to_string(channel_number) + ".fits";
         if(utilities::file_exists(outfile_fits)) {
           auto const image = pfitsio::read2d(outfile_fits);
           if(params.height != image.rows() or params.width != image.cols()) {
@@ -239,13 +243,19 @@ int main(int argc, char **argv) {
   std::size_t found = params.visfile.find_last_of(".");
   std::string format =  "." + params.visfile.substr(found+1);
   std::transform(format.begin(), format.end(), format.begin(), ::tolower);
-  std::vector<utilities::vis_params> uv_data_channels = (format == ".ms") ? purify::casa::read_measurementset_channels(params.visfile, params.stokes_val, 0) : std::vector<utilities::vis_params>{utilities::read_visibility(params.visfile, params.use_w_term)};
+  std::vector<utilities::vis_params> uv_data_channels = 
+    (format == ".ms") ? purify::casa::read_measurementset_channels(params.visfile, params.stokes_val, params.channel_averaging) :
+    std::vector<utilities::vis_params>{utilities::read_visibility(params.visfile, params.use_w_term)};
   std::vector<Image<t_complex>> images;
-  std::vector<Image<t_complex>> dirty_image;
+  std::vector<Image<t_real>> dirty_cube;
+  std::vector<Image<t_real>> dirty_cube_imag;
+  std::vector<Image<t_real>> psf_cube;
   PURIFY_HIGH_LOG("Imaging {} planes ...", uv_data_channels.size());
-  for (t_uint i = 0; i < uv_data_channels.size(); i++) {
-    auto uv_data = uv_data_channels[i];
-    PURIFY_HIGH_LOG("Imaging plane {} ...", i);
+  for (t_uint channel_number = 0; channel_number < uv_data_channels.size(); channel_number++) {
+    auto uv_data = uv_data_channels[channel_number];
+    PURIFY_HIGH_LOG("Imaging plane {} ...", channel_number + 1);
+    if (uv_data.vis.size() == 0)
+      PURIFY_HIGH_LOG("Plane {} contains no data!", channel_number);
     bandwidth_scaling(uv_data, params);
 
     // calculate weights outside of measurement operator
@@ -265,15 +275,15 @@ int main(int argc, char **argv) {
     auto const Psi = sopt::linear_transform<t_complex>(sara, params.height, params.width);
 
     PURIFY_LOW_LOG("Saving dirty map");
-    params.psf_norm = save_psf_and_dirty_image(measurements_transform, uv_data, params);
-
-    auto const estimates = read_estimates(measurements_transform, uv_data, params);
+    params.psf_norm = save_psf_and_dirty_image(measurements_transform, uv_data, params, dirty_cube, dirty_cube_imag, psf_cube);
+    //! Read estimates for warm start from previous diagnostic
+    auto const estimates = read_estimates(measurements_transform, uv_data, params, channel_number);
     t_real const epsilon = params.n_mu * std::sqrt(2 * uv_data.vis.size()) * noise_rms / std::sqrt(2); // Calculation of l_2 bound following SARA paper
     params.epsilon = epsilon;
     params.residual_convergence
       = (params.residual_convergence < 0) ? 0. : params.residual_convergence * epsilon;
     t_real purify_gamma = 0;
-    std::tie(params.iter, purify_gamma) = utilities::checkpoint_log(params.name + "_diagnostic_" +  std::to_string(i));
+    std::tie(params.iter, purify_gamma) = utilities::checkpoint_log(params.name + "_diagnostic_" +  std::to_string(channel_number));
     if(params.iter == 0)
       purify_gamma = (Psi.adjoint() * (measurements_transform.adjoint()
             * (uv_data.weights.array() * uv_data.vis.array()).matrix()))
@@ -283,7 +293,8 @@ int main(int argc, char **argv) {
 
     std::ofstream out_diagnostic;
     out_diagnostic.precision(13);
-    out_diagnostic.open(params.name + "_diagnostic", std::ios_base::app);
+    if (params.run_diagnostic)
+      out_diagnostic.open(params.name + "_diagnostic_" + std::to_string(channel_number), std::ios_base::app);
 
     PURIFY_HIGH_LOG("Starting sopt!");
     PURIFY_MEDIUM_LOG("Epsilon = {}", epsilon);
@@ -311,7 +322,7 @@ int main(int argc, char **argv) {
       .Phi(measurements_transform);
 
     auto convergence_function = [](const Vector<t_complex> &x) { return true; };
-    AlgorithmUpdate algo_update(params, uv_data, padmm, out_diagnostic, measurements, Psi);
+    AlgorithmUpdate algo_update(params, uv_data, padmm, out_diagnostic, measurements, Psi, channel_number);
     auto lambda = [&convergence_function, &algo_update](Vector<t_complex> const &x) {
       return convergence_function(x) and algo_update(x);
     };
@@ -326,12 +337,12 @@ int main(int argc, char **argv) {
       padmm.is_converged(lambda);
     if(params.niters != 0)
       padmm.itermax(params.niters);
-    if(params.no_reweighted) {
+    if(params.no_reweighted and uv_data.vis.size() > 0) {
       auto const diagnostic = padmm(estimates);
       outfile_fits = params.name + "_solution_" + params.weighting + "_final";
       residual_fits = params.name + "_residual_" + params.weighting + "_final";
       final_model = diagnostic.x;
-    } else {
+    } else if(uv_data.vis.size() > 0) {
       auto const posq = sopt::algorithm::positive_quadrant(padmm);
       auto const min_delta = noise_rms * std::sqrt(uv_data.vis.size())
         / std::sqrt(9 * measurements.imsizey() * measurements.imsizex());
@@ -347,7 +358,10 @@ int main(int argc, char **argv) {
     }
     images.push_back(Image<t_complex>::Map(final_model.data(), measurements.imsizey(), measurements.imsizex()));
     save_final_image(outfile_fits, residual_fits, images, uv_data, params, measurements);
-    out_diagnostic.close();
+    if (params.run_diagnostic)
+      out_diagnostic.close();
+    PURIFY_HIGH_LOG("Plane {} finished!", channel_number + 1);
   }
+  PURIFY_HIGH_LOG("All planes imaged!");
   return 0;
 }

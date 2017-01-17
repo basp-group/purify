@@ -21,6 +21,9 @@ struct Params {
   std::string visfile = "";
   std::string noisefile = "";
 
+  //spectral or continuum
+  t_int channel_averaging = 0;
+  //algorithm parameters
   t_int niters = 0;
   t_real beta = 1e-3;
   // measurement operator stuff
@@ -97,6 +100,7 @@ static struct option long_options[] = {
     {"grad", required_argument, 0, '2'},
     {"warmstart",no_argument, 0, '3'},
     {"non_positive",no_argument, 0, '4'},
+    {"channel_averaging", required_argument, 0 ,'5'},
     {0, 0, 0, 0}};
 
 std::string usage();
