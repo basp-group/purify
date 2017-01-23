@@ -139,7 +139,7 @@ namespace {
 
   void save_final_image(std::string const &outfile_fits, std::string const &residual_fits,
       std::vector<Image<t_complex>> const &x, utilities::vis_params const &uv_data,
-      Params const &params, MeasurementOperator measurements) {
+      Params const &params, const MeasurementOperator & measurements) {
     //! Save final output image
     purify::pfitsio::header_params header = create_new_header(uv_data, params);
     // header information
