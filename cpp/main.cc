@@ -17,6 +17,10 @@
 #include "purify/pfitsio.h"
 #include "purify/types.h"
 
+#ifdef PURIFY_OPENMP_FFTW
+#include <omp.h>
+#endif
+#include <fftw3.h>
 using namespace purify;
 namespace {
 
@@ -160,6 +164,7 @@ namespace {
       header.fits_name = outfile_fits + "_imag.fits";
       pfitsio::write3d_header(x_imag, header);
     }
+
     std::vector<Image<t_real>> residuals_real;
     std::vector<Image<t_real>> residuals_imag;
     for (int i = 0; i < x.size(); i++) {
@@ -178,6 +183,7 @@ namespace {
       header.fits_name = residual_fits + "_imag.fits";
       pfitsio::write3d_header(residuals_imag, header);
     }
+
   };
 
   std::tuple<Vector<t_complex>, Vector<t_complex>>
@@ -231,6 +237,10 @@ namespace {
 }
 
 int main(int argc, char **argv) {
+#ifdef PURIFY_OPENMP_FFTW
+    fftw_init_threads();
+    fftw_plan_with_nthreads(omp_get_max_threads());
+#endif
   sopt::logging::initialize();
   purify::logging::initialize();
 
@@ -357,10 +367,16 @@ int main(int argc, char **argv) {
       final_model = diagnostic.algo.x;
     }
     images.push_back(Image<t_complex>::Map(final_model.data(), measurements.imsizey(), measurements.imsizex()));
+    PURIFY_HIGH_LOG("Saving Plane {}...", channel_number + 1);
     save_final_image(outfile_fits, residual_fits, images, uv_data, params, measurements);
     if (params.run_diagnostic)
       out_diagnostic.close();
     PURIFY_HIGH_LOG("Plane {} finished!", channel_number + 1);
+#ifdef PURIFY_OPENMP_FFTW
+    fftw_cleanup_threads();
+#else
+    fftw_cleanup();
+#endif
   }
   PURIFY_HIGH_LOG("All planes imaged!");
   return 0;
