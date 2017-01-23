@@ -3,7 +3,7 @@
 
 #include "purify/config.h"
 #include "purify/types.h"
-
+#include "purify/logging.h"
 #ifdef PURIFY_OPENMP_FFTW
 #include <omp.h>
 #endif
@@ -12,7 +12,8 @@
 #include <unsupported/Eigen/FFT>
 #include <unsupported/Eigen/src/FFT/ei_fftw_impl.h>
 
-namespace purify {
+
+ namespace purify {
 
 //! This does something
 class Fft2d {
@@ -39,11 +40,10 @@ public:
   Matrix<t_complex> forward(const Matrix<t_complex> &input, bool only_plan = false);
   //! Uses Eigen's perform 2D IFFT
   Matrix<t_complex> inverse(const Matrix<t_complex> &input, bool only_plan = false);
-  //! Set up multithread fft
-  void set_up_multithread();
   //! Set up plan
   void init_plan(const Matrix<t_complex> &input);
-
+  //! Deconstructor
+  ~FFTOperator();
 protected:
   t_int fftw_flag_ = (FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
 
