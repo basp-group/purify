@@ -214,3 +214,18 @@ TEST_CASE("Direction") {
   CHECK(std::abs(direction[0] - 2.7395560603928995) < 1e-8);
   CHECK(std::abs(direction[1] + 0.76628680808811045) < 1e-8);
 }
+TEST_CASE("Reading channels"){
+  utilities::vis_params const uv_data = purify::casa::read_measurementset(purify::notinstalled::ngc3256_ms());
+  std::vector<utilities::vis_params> const uv_channels = purify::casa::read_measurementset_channels(purify::notinstalled::ngc3256_ms());
+  t_int vis_i = 0;
+  for (t_int channel = 0; channel < uv_channels.size(); i++) {
+    auto const channel_data = uv_channels[channel].vis;
+    for (t_int i = 0; i < channel_data.size(); i++) {
+      //Testing if data in channels is the same as reading all the data at once.
+      CHECK(uv_data(vis_i) == channel_data(i));
+      vis_i++;
+    }
+  }
+  //Check that all data has been compared.
+  CHECK(vis_i == uv_data.size());
+}
