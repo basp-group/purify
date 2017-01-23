@@ -6,12 +6,15 @@ using namespace purify;
 
 TEST_CASE("FFT Operator [FORWARD]", "[FORWARD]") {
 
-  t_int fft_flag = (FFTW_PATIENT | FFTW_PRESERVE_INPUT);
+#ifdef PURIFY_OPENMP_FFTW
+    fftw_init_threads();
+    fftw_plan_with_nthreads(omp_get_max_threads());
+#endif
+  t_int fft_flag = (FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
   Fft2d oldFFT;
   auto newFFT = purify::FFTOperator().fftw_flag(fft_flag);
   CAPTURE(newFFT.fftw_flag());
   CAPTURE(fft_flag);
-  newFFT.set_up_multithread();
   Matrix<t_complex> const a = Matrix<t_complex>::Random(20, 19);
   Matrix<t_complex> old_output = oldFFT.forward(a);
   Matrix<t_complex> new_output = newFFT.forward(a);
@@ -39,12 +42,21 @@ TEST_CASE("FFT Operator [FORWARD]", "[FORWARD]") {
   }
   pfitsio::write2d(newFFT.forward(guassian).cwiseAbs(), "forward_guassian.fits");
   pfitsio::write2d(oldFFT.forward(guassian).cwiseAbs(), "old_forward_guassian.fits");
+#ifdef PURIFY_OPENMP_FFTW
+    fftw_cleanup_threads();
+#else
+    fftw_cleanup();
+#endif
 }
 
 TEST_CASE("FFT Operator [INVERSE]", "[INVERSE]") {
 
+#ifdef PURIFY_OPENMP_FFTW
+    fftw_init_threads();
+    fftw_plan_with_nthreads(omp_get_max_threads());
+#endif
   Fft2d oldFFT;
-  t_int fft_flag = (FFTW_PATIENT | FFTW_PRESERVE_INPUT);
+  t_int fft_flag = (FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
   auto newFFT = purify::FFTOperator().fftw_flag(fft_flag);
   Matrix<t_complex> a = Matrix<t_complex>::Random(20, 19);
 
@@ -68,12 +80,21 @@ TEST_CASE("FFT Operator [INVERSE]", "[INVERSE]") {
   }
   pfitsio::write2d(newFFT.inverse(guassian).real(), "inverse_guassian.fits");
   pfitsio::write2d(oldFFT.inverse(guassian).real(), "old_inverse_guassian.fits");
+#ifdef PURIFY_OPENMP_FFTW
+    fftw_cleanup_threads();
+#else
+    fftw_cleanup();
+#endif
 }
 
 TEST_CASE("FFT Operator [BOTH]", "[BOTH]") {
 
+#ifdef PURIFY_OPENMP_FFTW
+    fftw_init_threads();
+    fftw_plan_with_nthreads(omp_get_max_threads());
+#endif
   Fft2d oldFFT;
-  t_int fft_flag = (FFTW_PATIENT | FFTW_PRESERVE_INPUT);
+  t_int fft_flag = (FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
   auto newFFT = purify::FFTOperator().fftw_flag(fft_flag);
   Matrix<t_complex> a = Matrix<t_complex>::Random(20, 19);
 
@@ -96,4 +117,9 @@ TEST_CASE("FFT Operator [BOTH]", "[BOTH]") {
   }
   pfitsio::write2d(newFFT.forward(newFFT.inverse(guassian)).real(), "guassian.fits");
   pfitsio::write2d(oldFFT.forward(oldFFT.inverse(guassian)).real(), "old_guassian.fits");
+#ifdef PURIFY_OPENMP_FFTW
+    fftw_cleanup_threads();
+#else
+    fftw_cleanup();
+#endif
 }
