@@ -39,7 +39,7 @@ TEST_CASE("Casacore") {
   feed.putScalar(rownr, 1);
   // Access a subtable
   casa::ArrayColumn<casa::Double> antpos(simpleMS.antenna(),
-                                         casa::MSAntenna::columnName(casa::MSAntenna::POSITION));
+      casa::MSAntenna::columnName(casa::MSAntenna::POSITION));
   simpleMS.antenna().addRow();
   casa::Array<casa::Double> position(casa::IPosition(1, 3));
   position(casa::IPosition(1, 0)) = 1.;
@@ -49,36 +49,36 @@ TEST_CASE("Casacore") {
 }
 
 class TmpPath {
-public:
-  TmpPath()
+  public:
+    TmpPath()
       : path_(boost::filesystem::unique_path(boost::filesystem::temp_directory_path()
-                                             / "%%%%-%%%%-%%%%-%%%%.ms")) {}
-  ~TmpPath() {
-    if(boost::filesystem::exists(path()))
-      boost::filesystem::remove_all(path());
-  }
-  boost::filesystem::path const &path() const { return path_; }
+            / "%%%%-%%%%-%%%%-%%%%.ms")) {}
+    ~TmpPath() {
+      if(boost::filesystem::exists(path()))
+        boost::filesystem::remove_all(path());
+    }
+    boost::filesystem::path const &path() const { return path_; }
 
-private:
-  boost::filesystem::path path_;
+  private:
+    boost::filesystem::path path_;
 };
 
 class TmpMS : public TmpPath {
-public:
-  TmpMS() : TmpPath() {
-    casa::TableDesc simpleDesc = casa::MS::requiredTableDesc();
-    casa::SetupNewTable newTab(path().string(), simpleDesc, casa::Table::New);
-    ms_.reset(new casa::MeasurementSet(newTab));
-    ms_->createDefaultSubtables(casa::Table::New);
-  }
-  casa::MeasurementSet const &operator*() const { return *ms_; }
-  casa::MeasurementSet &operator*() { return *ms_; }
+  public:
+    TmpMS() : TmpPath() {
+      casa::TableDesc simpleDesc = casa::MS::requiredTableDesc();
+      casa::SetupNewTable newTab(path().string(), simpleDesc, casa::Table::New);
+      ms_.reset(new casa::MeasurementSet(newTab));
+      ms_->createDefaultSubtables(casa::Table::New);
+    }
+    casa::MeasurementSet const &operator*() const { return *ms_; }
+    casa::MeasurementSet &operator*() { return *ms_; }
 
-  casa::MeasurementSet const *operator->() const { return ms_.get(); }
-  casa::MeasurementSet *operator->() { return ms_.get(); }
+    casa::MeasurementSet const *operator->() const { return ms_.get(); }
+    casa::MeasurementSet *operator->() { return ms_.get(); }
 
-protected:
-  std::unique_ptr<casa::MeasurementSet> ms_;
+  protected:
+    std::unique_ptr<casa::MeasurementSet> ms_;
 };
 
 TEST_CASE("Size/Number of channels") {
@@ -164,7 +164,7 @@ TEST_CASE("Measurement channel") {
 
 TEST_CASE("Channel iteration") {
   std::vector<int> const valids{
-      17,  18,  19,  20,  21,  22,  23,  24,  25,  26,  27,  28,  29,  30,  31,  32,  33,  34,
+    17,  18,  19,  20,  21,  22,  23,  24,  25,  26,  27,  28,  29,  30,  31,  32,  33,  34,
       35,  36,  37,  38,  39,  40,  41,  42,  43,  44,  45,  46,  47,  48,  49,  50,  51,  52,
       53,  54,  55,  56,  57,  58,  59,  60,  61,  62,  63,  64,  65,  66,  67,  68,  69,  70,
       71,  72,  73,  74,  75,  76,  77,  78,  79,  80,  81,  82,  83,  84,  85,  86,  87,  88,
@@ -176,7 +176,7 @@ TEST_CASE("Channel iteration") {
   for(; i_channel < i_end; i_channel += 10) {
     CHECK(i_channel->channel() < 128);
     bool const is_valid
-        = std::find(valids.begin(), valids.end(), i_channel->channel()) != valids.end();
+      = std::find(valids.begin(), valids.end(), i_channel->channel()) != valids.end();
     CHECK(is_valid == i_channel->is_valid());
   }
 }
