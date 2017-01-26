@@ -188,10 +188,17 @@ namespace {
 
   std::tuple<Vector<t_complex>, Vector<t_complex>>
     read_estimates(sopt::LinearTransform<sopt::Vector<sopt::t_complex>> const &measurements,
-        purify::utilities::vis_params const &uv_data, purify::Params const &params, t_uint const channel_number) {
-      Vector<t_complex> initial_estimate
-        = measurements.adjoint() * (uv_data.weights.array() * uv_data.vis.array());
+        purify::utilities::vis_params const &uv_data, Image<t_complex> const & model_image,
+        purify::Params const &params, t_uint const channel_number) {
+      // Calculate residuals given estimate data
+      Vector<t_complex> initial_estimate =
+      Matrix<t_complex>::Map(model_image.data(), model_image.size() , 1);
       Vector<t_complex> initial_residuals = Vector<t_complex>::Zero(uv_data.vis.size());
+      if (initial_estimate.isApprox(Vector<t_complex>::Zero(initial_estimate.size()), 1e-12)){
+        initial_estimate = measurements.adjoint() * (uv_data.weights.array() * uv_data.vis.array()); // Have to think about if these weights make sense when we move the weights to the measurement operator...
+      }else{
+        initial_residuals = (measurements * (initial_estimate)).array() * uv_data.weights.array();
+      }
       // loading data from check point.
       if(utilities::file_exists(params.name + "_diagnostic_" + std::to_string(channel_number)) and params.warmstart == true) {
         PURIFY_HIGH_LOG("Loading checkpoint for {}", params.name.c_str());
@@ -286,8 +293,10 @@ int main(int argc, char **argv) {
 
     PURIFY_LOW_LOG("Saving dirty map");
     params.psf_norm = save_psf_and_dirty_image(measurements_transform, uv_data, params, dirty_cube, dirty_cube_imag, psf_cube);
+    if (channel_number > images.size())
+      throw std::runtime_error("Number of previous images does not match the plane number being imaged.");
     //! Read estimates for warm start from previous diagnostic
-    auto const estimates = read_estimates(measurements_transform, uv_data, params, channel_number);
+    auto const estimates = images.empty() ? read_estimates(measurements_transform, uv_data, Vector<t_complex>::Zero(params.height * params.width), params, channel_number): read_estimates(measurements_transform, uv_data, images[channel_number - 1], params, channel_number);
     t_real const epsilon = params.n_mu * std::sqrt(2 * uv_data.vis.size()) * noise_rms / std::sqrt(2); // Calculation of l_2 bound following SARA paper
     params.epsilon = epsilon;
     params.residual_convergence
