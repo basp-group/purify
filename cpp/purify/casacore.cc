@@ -112,14 +112,16 @@ namespace purify {
           assert(field_ids_raw(i) < source_ids_raw.size());
           source_ids.insert(source_ids_raw(field_ids_raw(i)));
         }
-        if(source_ids.size() == 0)
+        if(source_ids.size() == 0 and source_ids_raw.size() > 0) {
+            throw std::runtime_error("Could not find sources. Try different filter. Currently using filter: " + filter);
+        }
+        else if(source_ids_raw.size() == 0)
           throw std::runtime_error("Could not find sources. Cannot determine direction");
         auto const directions = table_column<::casacore::Double>(table("SOURCE"), "DIRECTION");
         auto const original = directions.row(*source_ids.begin());
         for(auto const other : source_ids)
           if(not directions.row(other).isApprox(original, tolerance))
             throw std::runtime_error("Found more than one direction");
-
         return original;
       }
 
@@ -183,6 +185,7 @@ namespace purify {
         t_uint row = 0;
 
         for(auto channel_number : channels) {
+          PURIFY_DEBUG("Reading channel {} ...", channel_number);
           if (channel_number < ms_file.size()){
             auto const channel = ms_file[channel_number];
             if(uv_data.ra != channel.right_ascension() or uv_data.dec != channel.declination())
@@ -288,10 +291,15 @@ namespace purify {
       //Read and average the channels into a vector of vis_params
       std::vector<utilities::vis_params> channels_vis;
       auto const ms_file = purify::casa::MeasurementSet(filename);
-
-      t_int const planes = (channel_width == 0) ? 1 : ms_file.size() / channel_width;
+      t_int const total_channels = ms_file.size();
+      t_int const planes = (channel_width == 0) ? 1 : std::floor(total_channels / channel_width);
+      PURIFY_DEBUG("Number of planes {} ...", planes);
       for (int i = 0; i < planes; i++) {
-        const Vector<t_int> temp_block = Vector<t_int>::LinSpaced(1, i * channel_width, channel_width);
+        PURIFY_DEBUG("Reading plane {} ...", i);
+        t_int const end = std::min((i + 1) * channel_width, total_channels);
+        Vector<t_int> temp_block = Vector<t_int>::LinSpaced(channel_width, i * channel_width, end);
+        if (channel_width == 1 or total_channels == i)
+          temp_block(0) = i;
         auto const block = std::vector<t_int>(temp_block.data(), temp_block.data() + temp_block.size());
         channels_vis.push_back(read_measurementset(ms_file, pol, block, filter));
       }
