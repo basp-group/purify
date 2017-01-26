@@ -185,7 +185,7 @@ namespace purify {
         t_uint row = 0;
 
         for(auto channel_number : channels) {
-          PURIFY_DEBUG("Reading channel {} ...", channel_number);
+          PURIFY_DEBUG("Adding channel {} to plane...", channel_number);
           if (channel_number < ms_file.size()){
             auto const channel = ms_file[channel_number];
             if(uv_data.ra != channel.right_ascension() or uv_data.dec != channel.declination())
