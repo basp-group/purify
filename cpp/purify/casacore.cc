@@ -113,15 +113,11 @@ namespace purify {
           source_ids.insert(source_ids_raw(field_ids_raw(i)));
         }
         if(source_ids.size() == 0 and source_ids_raw.size() > 0) {
-          try{  
-            throw std::runtime_error("Could not find sources. Try different filter, no matching data in channel. Currently using filter: " + filter);
-          } catch(std::runtime_error e){
-            PURIFY_DEBUG(e.what());
+            PURIFY_DEBUG("Could not find sources. Try different filter, no matching data in channel. Currently using filter: " + filter);
             Vector<t_real> original(2);
             original(0) = 0.; original(1) = 0.;
             return original;
-          }
-          }
+        }
         else if(source_ids_raw.size() == 0)
           throw std::runtime_error("Could not find sources. Cannot determine direction");
         auto const directions = table_column<::casacore::Double>(table("SOURCE"), "DIRECTION");
