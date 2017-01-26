@@ -157,7 +157,9 @@ namespace purify {
         std::vector<t_int> channels = channels_input;
         if(channels.empty()) {
           PURIFY_LOW_LOG("All Channels = {}", ms_file.size());
-          Vector<t_int> temp_vector = Vector<t_int>::Zero(ms_file.size());
+          Vector<t_int> temp_vector = Vector<t_int>::LinSpaced(ms_file.size() , 0, ms_file.size());
+          if (temp_vector.size() == 1) //fixing unwanted behavior of LinSpaced when ms_file.size() = 1
+            temp_vector(0) = 0;
           channels = std::vector<t_int>(temp_vector.data(), temp_vector.data() + temp_vector.size());
         }
 
