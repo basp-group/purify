@@ -39,7 +39,7 @@ inline std::string output_filename(std::string const &filename) {
   return output_directory() + "/" + filename;
 }
 
-inline std::string ngc3256_ms() { return "@NGC3256_MS@"; }
+inline std::string ngc5921_2_ms() { return "@NGC5921_2_MS@"; }
 }
 } /* sopt::notinstalled */
 #endif
