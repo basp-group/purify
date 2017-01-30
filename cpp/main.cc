@@ -219,7 +219,9 @@ namespace {
     }
 
   MeasurementOperator
-    construct_measurement_operator(utilities::vis_params const &uv_data, purify::Params const &params) {
+    construct_measurement_operator(utilities::vis_params const &uv_data, 
+        purify::Params const &params,
+        const std::shared_ptr<FFTOperator> & fftoperator) {
       auto measurements = MeasurementOperator()
         .Ju(params.J)
         .Jv(params.J)
@@ -237,7 +239,8 @@ namespace {
         .primary_beam(params.primary_beam)
         .fft_grid_correction(params.fft_grid_correction)
         .fftw_plan_flag(params.fftw_plan)
-        .gradient(params.gradient);
+        .gradient(params.gradient)
+        .fftoperator(fftoperator);
       measurements.init_operator(uv_data);
       return measurements;
     };
@@ -252,6 +255,11 @@ int main(int argc, char **argv) {
   purify::logging::initialize();
 
   Params params = parse_cmdl(argc, argv);
+  std::shared_ptr<FFTOperator> fftoperator = std::make_shared<FFTOperator>();
+  if (params.fftw_plan == "measure")
+    fftoperator->fftw_flag((FFTW_MEASURE | FFTW_PRESERVE_INPUT));
+  if (params.fftw_plan == "estimate")
+    fftoperator->fftw_flag((FFTW_ESTIMATE | FFTW_PRESERVE_INPUT));
   sopt::logging::set_level(params.sopt_logging_level);
   purify::logging::set_level(params.sopt_logging_level);
   params.stokes_val = choose_pol(params.stokes);
@@ -280,7 +288,7 @@ int main(int argc, char **argv) {
         uv_data.u, uv_data.v, uv_data.weights, params.over_sample, params.weighting, 0,
         params.over_sample * params.width, params.over_sample * params.height);
     auto const noise_rms = estimate_noise(params);
-    auto const measurements = construct_measurement_operator(uv_data, params);
+    auto const measurements = construct_measurement_operator(uv_data, params, fftoperator);
     params.norm = measurements.norm;
     auto const measurements_transform = linear_transform(measurements, uv_data.vis.size());
 
