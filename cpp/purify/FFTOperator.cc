@@ -144,6 +144,12 @@ namespace purify {
   }
   void FFTOperator::init_plan(const Matrix<t_complex> &input) {
     Matrix<t_complex> dest = Matrix<t_complex>::Zero(input.rows(), input.cols());
+    std::string plan = "";
+    if(fftw_flag_ == (FFTW_MEASURE | FFTW_PRESERVE_INPUT))
+      plan = "Measuring...";
+    if(fftw_flag_ == (FFTW_ESTIMATE | FFTW_PRESERVE_INPUT))
+      plan = "Estimating...";
+    PURIFY_LOW_LOG("Planning FFT operator: {}", plan);
     FFTOperator::forward(dest, true);
     FFTOperator::inverse(dest, true);
   }

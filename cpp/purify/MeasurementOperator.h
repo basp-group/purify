@@ -68,12 +68,11 @@ public:                                                                         
 
   // writing definiton of fftoperator so that it is mutable.
 protected:
-  mutable FFTOperator fftoperator_
-      = purify::FFTOperator();
+  std::shared_ptr<FFTOperator> fftoperator_;
 
 public:
-  FFTOperator &fftoperator() { return fftoperator_; };
-  MeasurementOperator &fftoperator(FFTOperator const &fftoperator) {
+  std::shared_ptr<FFTOperator> &fftoperator() { return fftoperator_; };
+  MeasurementOperator &fftoperator(const std::shared_ptr<FFTOperator> &fftoperator) {
     fftoperator_ = fftoperator;
     return *this;
   };
