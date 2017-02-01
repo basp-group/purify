@@ -40,6 +40,8 @@ inline std::string output_filename(std::string const &filename) {
 }
 
 inline std::string ngc5921_2_ms() { return "@NGC5921_2_MS@"; }
+
+inline std::string ngc5921_2_vis() { return "@PROJECT_BINARY_DIR@/data/ngc5921_2.vis"; }
 }
 } /* sopt::notinstalled */
 #endif
