@@ -285,6 +285,10 @@ namespace purify {
             }
           }
         }
+        //make consistent with vis file format exported from casa
+        uv_data.u = uv_data.u * 2 / (3. * purify::constant::pi);
+        uv_data.v = uv_data.v * 2 / (3. * purify::constant::pi);
+        uv_data.w = uv_data.w * 2 / (3. * purify::constant::pi);
         uv_data.weights = 1. / uv_data.weights.array();
         return uv_data;
       }
