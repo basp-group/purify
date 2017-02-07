@@ -53,15 +53,13 @@ print 'Total Channels: ', len(data[0,:,0])
 for j in range(0,len(data[0,:,0])):
     print 'Adding Channel:', j, 'Frequency (Hz):', freq[j, 0]
     flag = tb.getcol('FLAG')[0, j, :]
-    dataI = (data[0,j,:]+data[1,j,:])
-    sigmaI = np.sqrt(sigma[0,:]**2+sigma[1,:]**2)
+    dataI = (data[0,j,:]+data[1,j,:])*0.5
+    sigmaI = np.sqrt(sigma[0,:]**2+sigma[1,:]**2)*0.5
 
         # -----------------------------------------------------
     print ">> Columns are:"
     print " U(lambda)  V(lambda)  Real(Jy)  Imag(Jy)  Sigma(Jy) "
-    uvw_c = uvw#*np.mean(freq)/const_c # convert from m -> lambda
-    #scale = 3*pi/2.;
-    #uvw_c = uvw_c * scale
+    uvw_c = uvw * freq[j, 0]/const_c # convert from m -> lambda
     # loop over visibility:
     for i in range(0,uvw.shape[1]):
         if (flag[i]==0):
