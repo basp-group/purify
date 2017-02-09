@@ -8,48 +8,29 @@ list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_files)
 # It contains a number of cmake recipes
 include(LookUp-GreatCMakeCookOff)
 
-# Set version and build id of this package
-include(VersionAndGitRef)
-set_version(0.1.1)
-get_gitref()
+option(tests          "Enable testing"                                  on)
+option(examples       "Compile examples"                                on)
+option(data           "Download measurement set for testing"            on)
+option(openmp         "Enable OpenMP"                                   on)
+option(logging        "Enable logging"                                  on)
 
-# Add C99 flag, since code uses inline
-# yeah, yeah it is GNU C, and others since for ever, but it was not part of the standard.
-include(AddC99Flags)
+# Set version and build id of this package
+include(version)
+
+# we are doing c++11
 include(AddCPP11Flags)
 
-option(tests          "Enable testing"                                  on)
-option(openmp         "Enable OpenMP"                                   on)
-option(python         "Enable python bindings"                          on)
-
-if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  if(NOT "$ENV{VIRTUAL_ENV}" STREQUAL "")
-    set(CMAKE_INSTALL_PREFIX
-      "$ENV{VIRTUAL_ENV}" CACHE PATH "Installation location" FORCE)
-    message(STATUS
-      "Install dir unspecified and virtual env found. "
-      "Defaults to installing in ${CMAKE_INSTALL_PREFIX}"
-    )
-  endif()
-endif()
-
-# Extra parameters
-if(NOT DEFINED LIBRARY_INSTALL_PATH)
-    set(LIBRARY_INSTALL_PATH "${CMAKE_INSTALL_PREFIX}/lib")
-endif()
+# sets up rpath so libraries can be found
 include(rpath)
+
+# adds logging variables
+include(logging)
 
 # include exernal dependencies
 include(dependencies)
-if(EXISTS "${EXTERNAL_ROOT}/lib/")
-    install(DIRECTORY "${EXTERNAL_ROOT}/lib/"
-        DESTINATION "${LIBRARY_INSTALL_PATH}"
-        PATTERN "pkgconfig" EXCLUDE
-        PATTERN "*.a" EXCLUDE
-    )
-endif()
-if(python)
-    include(python_dependencies)
+
+if(tests AND data)
+    include(data_dependencies)
 endif()
 
 if(tests)  # Adds ctest
@@ -57,29 +38,7 @@ if(tests)  # Adds ctest
     include(AddCatchTest)
 endif()
 
-include_directories(
-    "${PROJECT_SOURCE_DIR}/include"
-    "${PROJECT_BINARY_DIR}/include/purify"
-)
-
-add_subdirectory(src)
-add_subdirectory(include)
-add_subdirectory(python)
-add_subdirectory(doc)
 add_subdirectory(cpp)
 
-if(LINK_TO_ABSOLUTE_PYTHON_PATH AND APPLE)
-    configure_file(
-        "${PROJECT_SOURCE_DIR}/cmake_files/AbsolutePythonPath.in.cmake"
-        "${PROJECT_BINARY_DIR}/post_install/AbsolutePythonPath.cmake"
-        @ONLY
-    )
-    file(WRITE
-        "${PROJECT_BINARY_DIR}/post_install/CMakeLists.txt"
-        "install(SCRIPT \"AbsolutePythonPath.cmake\")"
-    )
-    add_subdirectory(
-        "${PROJECT_BINARY_DIR}/post_install" # Generated source dir
-        "${PROJECT_BINARY_DIR}/post_install/build" # Build dir
-    )
-endif()
+# Exports Purify so other packages can access it
+include(export_purify)
