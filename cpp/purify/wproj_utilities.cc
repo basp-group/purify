@@ -155,10 +155,10 @@ namespace purify {
                      G_bis.coeffRef(pix.index()) = pix.value() ; 
               Vector<t_complex> row(Npix);  
               row = row_wise_convolution(G_bis,chirp, Nx,Ny); 
-              Eigen::SparseVector<t_int> indexRow = sparsify_row_index(row, energy_fraction_wproj);
-              for (Eigen::SparseVector<t_int>::InnerIterator pix(indexRow); pix; ++pix){
+              Eigen::SparseVector<t_complex> sparseRow = sparsify_row_values(row, energy_fraction_wproj);
+              for (Eigen::SparseVector<t_complex>::InnerIterator pix(sparseRow); pix; ++pix){
               #pragma omp critical (load1)  
-                 tripletList.push_back(T(m,pix.value(),row.coeffRef(pix.value())));  
+                 tripletList.push_back(T(m,pix.index(),(pix.value())));  
               }
             }
         }        
