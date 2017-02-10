@@ -191,6 +191,7 @@ TEST_CASE("Read Measurement") {
     CAPTURE(ms_file.u.tail(5));
     CAPTURE(ms_file.u(1000)/vis_file.u(1000));
     CAPTURE(ms_file.vis(1000)/vis_file.vis(1000));
+    CAPTURE(ms_file.weights(1000)/vis_file.weights(1000));
     CHECK(vis_file.u.isApprox(ms_file.u, 1e-3));
     CHECK(vis_file.v.isApprox(ms_file.v, 1e-3));
     CHECK(vis_file.vis.isApprox(ms_file.vis, 1e-6));

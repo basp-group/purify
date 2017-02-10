@@ -186,7 +186,7 @@ namespace purify {
 
         // add data to channel
         t_uint row = 0;
-        
+
         for(auto channel_number : channels) {
           PURIFY_DEBUG("Adding channel {} to plane...", channel_number);
           if (channel_number < ms_file.size()){
@@ -198,7 +198,7 @@ namespace purify {
               uv_data.u.segment(row, channel.size()) = channel.lambda_u();
               uv_data.v.segment(row, channel.size()) = -channel.lambda_v();
               uv_data.w.segment(row, channel.size()) = channel.lambda_w();
-              t_real const the_casa_factor = std::sqrt(2);
+              t_real const the_casa_factor = 2;
               switch(polarization) {
                 case MeasurementSet::ChannelWrapper::polarization::I:
                   uv_data.vis.segment(row, channel.size()) = channel.I("DATA") * 0.5;

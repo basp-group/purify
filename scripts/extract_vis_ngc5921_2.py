@@ -53,8 +53,8 @@ print 'Total Channels: ', len(data[0,:,0])
 for j in range(0,len(data[0,:,0])):
     print 'Adding Channel:', j, 'Frequency (Hz):', freq[j, 0]
     flag = tb.getcol('FLAG')[0, j, :]
-    dataI = (data[0,j,:]+data[1,j,:])*0.5
-    sigmaI = np.sqrt(sigma[0,:]**2+sigma[1,:]**2)*0.5
+    dataI = (data[0,j,:]+data[1,j,:]) * 0.5;
+    sigmaI = np.sqrt((sigma[0,:]**2+sigma[1,:]**2) * 0.5)
 
         # -----------------------------------------------------
     print ">> Columns are:"
