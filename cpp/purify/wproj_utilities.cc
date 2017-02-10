@@ -254,7 +254,8 @@ namespace purify {
           if ( energy == 1){ 
             #pragma omp parallel for 
             for (t_int i = 0; i < row.size(); ++i){
-              output_row.coeffRef(i)=row(i);
+              if (std::abs(row(i)) >1e-14)
+                 output_row.coeffRef(i)=row(i);
             }
             return output_row;
           }  
