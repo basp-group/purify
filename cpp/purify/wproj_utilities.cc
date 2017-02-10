@@ -188,6 +188,7 @@ namespace purify {
           if ( energy == 1){ 
             PURIFY_DEBUG("row energy 1");
             for (t_int i = 0; i < rowLength; ++i){
+                if (std::abs(row(i)) >1e-14)
                   output_row.coeffRef(i)=i;
             }          
             return output_row;
