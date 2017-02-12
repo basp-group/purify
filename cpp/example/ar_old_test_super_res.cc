@@ -70,7 +70,6 @@ int main( int nargs, char const** args ){
   std::cout<< "  UV down-scaling factor: " << resolution <<"\n";
   std::cout<< "  iSNR: " << iSNR <<"\n";
   std::cout<< "  Results saved in : "<<outputdir<<"\n";
-  std::cout<< "  Reconstruction using PADMM\n";
   std::cout<< "**---------------------------------------------------------------------------**\n";
 
   /*   Gridding parameters */

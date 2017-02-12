@@ -429,6 +429,10 @@ void MeasurementOperator::init_operator(const utilities::vis_params &uv_vis_inpu
       kernelv);
 
   //////// w kernels here
+  // Vector<t_real> uvdist = (uv_vis.u.array() * uv_vis.u.array() + uv_vis.v.array() * uv_vis.v.array()).sqrt();
+  //     t_real Blength = 2 * uvdist.maxCoeff();
+  //     Vector<t_real> w_kernel_size = (widthOr *uv_data.w * L / Blength);
+
   if (use_w_term_==true){
       PURIFY_HIGH_LOG("Building the new G matrix with w components");
       G =  wproj_utilities::wprojection_matrix(G, ftsizeu_, ftsizeu_,uv_vis.w, cell_x_, cell_y_,energy_fraction_chirp_,energy_fraction_wproj_);

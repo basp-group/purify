@@ -65,18 +65,20 @@ namespace purify {
     return chirp_row;
   }
 
-  Vector<t_complex> row_wise_convolution(const Eigen::SparseVector<t_complex> &Grid,  Eigen::SparseVector<t_complex>& Chirp, const t_int& Nx, const t_int& Ny){
-           
-      t_int Npix = Nx*Ny;
+  Eigen::SparseVector<t_complex> row_wise_convolution(const Eigen::SparseVector<t_complex> &Grid,  Eigen::SparseVector<t_complex>& Chirp, const t_int& Nx, const t_int& Ny){
+      
+      Eigen::SparseVector<t_complex> output_row(Nx*Ny);
+      t_int row_support = 0 ;    
       const t_int nx2 = Nx/2;
       const t_int ny2 = Ny/2;
+      // PURIFY_DEBUG("\n Inside CONV ");
 
-      Vector<t_complex> output_row=Vector<t_complex>::Zero(Npix);
-      t_int row_support = 0 ;
-      #pragma omp parallel for collapse(2)
+      // #pragma omp parallel for collapse(2) shared(Grid)
         for(t_int i = 0; i < Nx; ++i){     
           for(t_int j = 0; j < Ny; ++j){ 
+        
             t_complex temp (0.0,0.0);
+             
             for (Eigen::SparseVector<t_complex>::InnerIterator pix(Grid); pix; ++pix){                   
               Vector<t_int> image_row_col = utilities::ind2sub(pix.index(), Nx, Ny);  
               t_int ii = image_row_col(0); 
@@ -102,20 +104,16 @@ namespace purify {
 
             if(std::abs(temp) > 1e-14){
               t_int iii,jjj;
-
               if(i >= nx2)   iii = i - nx2;  else{   iii = i + nx2;   }
-              if(j >= ny2)   jjj = j - ny2;  else{   jjj = j + ny2;   }
-   
+              if(j >= ny2)   jjj = j - ny2;  else{   jjj = j + ny2;   } 
               t_int pos = utilities::sub2ind(iii,jjj,Nx,Ny); 
-              // #pragma omp atomic
-              // row_support++;
-              output_row(pos)= temp; 
-              // std::cout<<"\n"<<"<<<<< CONV: //"<<pos<<"// "<<std::abs(temp)<<"// -->"<<row_support;fflush(stdout); 
+              output_row.insert(pos)= temp; 
+         
+              // std::cout<<"<<<<< CONV: //"<<pos<<"// "<<std::abs(temp)<<"// -->\n";fflush(stdout); 
             }            
           }  
         }
-        
-        // std::cout<<"\n"<<"2D convolution SUPPORT: "<<row_support<<"\n";fflush(stdout);
+         std::cout<<"<<<<< CONV: //"<<output_row.nonZeros()<<"// -->\n";fflush(stdout); 
         return output_row;  
   }   
   
@@ -132,42 +130,165 @@ namespace purify {
         if (energy_fraction_chirp <1) PURIFY_HIGH_LOG("Hard-thresholding of the Chirp kernels ");
         if (energy_fraction_wproj <1) PURIFY_HIGH_LOG("Hard-thresholding of the rows of G ");
         
-        tripletList.reserve(floor(Npix*Nvis*0.2));
-        #pragma omp parallel for 
+        tripletList.reserve(floor(Npix*Nvis*0.2)); 
+       // #pragma omp parallel for 
         for(t_int m = 0;  m < Grid.outerSize(); ++m){ 
-            PURIFY_DEBUG("WPROJ - Kernel index [{}]",m);
-
+            PURIFY_HIGH_LOG("\nCURRENT WPROJ - Kernel index [{}]",m);
             Eigen::SparseVector<t_complex> chirp(Npix);
-            chirp =  create_chirp_row( w_components(m),cell_x, cell_y, Nx, Ny,energy_fraction_chirp);            
+            chirp =  create_chirp_row(w_components(m),cell_x, cell_y, Nx, Ny,energy_fraction_chirp);            
             t_int chirp_size = chirp.nonZeros();
             PURIFY_DEBUG("Number of nonzeros entries in CHIRP :[{}]",chirp_size);
-            // probably add assert if nonzeros = 0 --> ERROR
-
-            if (chirp_size ==1){  
-              for (Sparse<t_complex>::InnerIterator itr(Grid,m); itr; ++itr){
-              #pragma omp critical (load0)  
-                 tripletList.push_back(T(m,itr.index(),itr.value()));
-              }    
-            }    
-            else{
-              Eigen::SparseVector<t_complex> G_bis(Npix);
-              for (Sparse<t_complex>::InnerIterator pix(Grid,m); pix; ++pix)
-                     G_bis.coeffRef(pix.index()) = pix.value() ; 
-              Vector<t_complex> row(Npix);  
-              row = row_wise_convolution(G_bis,chirp, Nx,Ny); 
-              Eigen::SparseVector<t_complex> sparseRow = sparsify_row_values(row, energy_fraction_wproj);
-              for (Eigen::SparseVector<t_complex>::InnerIterator pix(sparseRow); pix; ++pix){
-              #pragma omp critical (load1)  
-                 tripletList.push_back(T(m,pix.index(),(pix.value())));  
-              }
+            Eigen::SparseVector<t_complex> G_bis(Npix);  
+            for (Sparse<t_complex>::InnerIterator pix(Grid,m); pix; ++pix){
+                     G_bis.coeffRef(pix.index()) = pix.value() ;
+                     std::cout<<"<<<<< INIT: ||"<<pix.index()<<"|| "<<std::abs(pix.value())<<" || <--\n";fflush(stdout);             
             }
+            auto row = row_wise_convolution(G_bis,chirp, Nx,Ny); 
+
+            std::cout<<"\nCONV is DONE with success\n";fflush(stdout);
+            Eigen::SparseVector<t_real> absRow = row.cwiseAbs();
+            wproj_utilities::sparsify_row_sparse(absRow, energy_fraction_wproj);
+            PURIFY_DEBUG("Number of nonzeros entries in sparseRow :[{}]",absRow.nonZeros());
+            for (Eigen::SparseVector<t_real>::InnerIterator itr(absRow); itr; ++itr){
+               std::cout<<"<<<<< STORE: ||"<<itr.index()<<"|| "<<std::abs(itr.value())<<" || <--\n";fflush(stdout);
+              // #pragma omp critical (load1)  
+                 tripletList.push_back(T(m,itr.index(),row.coeffRef(itr.index())));  
+            }
+            // }
         }        
         Sparse<t_complex> Gmat(Nvis, Npix);
         Gmat.setFromTriplets(tripletList.begin(), tripletList.end());
-        PURIFY_DEBUG("Building the rows of G.. DONE!");
+        PURIFY_DEBUG("\n \nBuilding the rows of G.. DONE!\n");
         return Gmat;  
   }   
-        
+
+  void sparsify_row_sparse(Eigen::SparseVector<t_real> &row, const t_real &energy){
+         /*
+          Takes in a row of G and returns indexes of coeff to keep in the row sparse version 
+          energy:: how much energy - in l2 sens - to keep after hard-thresholding 
+         */
+          
+          
+
+          
+          if ( energy <1){
+            t_real tau = 0.5;
+          t_real old_tau = -1;
+          t_int niters = 100;
+          // const Vector<t_real> abs_row = row;
+          const t_real abs_row_total_energy = (row.cwiseProduct(row)).sum();
+          t_real min_tau = 0;
+          t_real max_tau = 0.5;
+          t_int rowLength = row.size();
+          t_real abs_row_max = 0;
+
+          for (Eigen::SparseVector<t_real>::InnerIterator itr(row); itr; ++itr){
+                      if  (itr.value() > abs_row_max)
+                          abs_row_max =itr.value() ;                    
+          }
+          /* calculating threshold  */
+          t_real energy_sum = 0;
+          t_real tau__=0;
+          for (t_int i = 0; i < niters; ++i){            
+              energy_sum = 0;    
+              tau__ =   tau *  abs_row_max;    
+              // #pragma omp parallel for reduction(+:energy_sum)  
+              for (Eigen::SparseVector<t_real>::InnerIterator itr(row); itr; ++itr){
+                      if  (itr.value() > tau__)
+                          energy_sum +=  itr.value() * itr.value() ;                    
+                  }
+              energy_sum= energy_sum/abs_row_total_energy;      
+              std::cout<<"WPROJ - ROW looping : ["<<energy_sum<<"] tau: ["<< tau__<<"] "<<i<<"\n";fflush(stdout);                                     
+              if ( (std::abs(tau - old_tau)/std::abs(old_tau) < 1e-6) and  (energy_sum>=energy)  and (std::abs(energy_sum/energy - 1) <0.001)){
+                  // std::cout<<"WPROJ - ROW energy: ["<<energy_sum<<"] tau: ["<< tau<<"] "<<i<<"\n";fflush(stdout);
+                 break;        
+              }  
+              else{
+                    old_tau = tau;
+                    if (energy_sum > energy)   min_tau = tau; 
+                    else{  max_tau = tau; }
+                    tau = (max_tau - min_tau) * 0.5 + min_tau;
+              }
+              if (i == niters-1)                 
+                tau = min_tau;           
+          }   
+          /* performing clipping */ 
+          t_real tau_n = tau * abs_row_max;
+          row.prune(tau_n,0);
+                    std::cout<<"\nWPROJ - ROW energy DONE ["<<tau_n<<"] before exit tau ["<<tau<<"]\n";fflush(stdout);
+
+        }
+
+
+
+          
+  }
+  Eigen::SparseVector<t_complex> sparsify_row_values(const Vector<t_complex>& row, const t_real& energy){
+         /*
+          Takes in a row of G and returns indexes of coeff to keep in the row sparse version 
+          energy:: how much energy - in l2 sens - to keep after hard-thresholding 
+         */
+          
+          t_real tau = 0.5;
+          t_real old_tau = -1;
+          t_int niters = 100;
+          const Vector<t_real> abs_row = row.cwiseAbs();
+          const t_real abs_row_max = abs_row.maxCoeff();
+          t_real abs_row_total_energy = (abs_row.array() * abs_row.array()).sum();
+          t_real min_tau = 0;
+          t_real max_tau = 0.5;
+          t_int rowLength = row.size();
+
+          Eigen::SparseVector<t_complex> output_row(row.size());
+          if ( energy == 1){ 
+            #pragma omp parallel for 
+            for (t_int i = 0; i < row.size(); ++i){
+              if (abs_row(i) >1e-14)
+                 output_row.coeffRef(i)=row(i);
+            }
+            return output_row;
+          }  
+          /* calculating threshold  */
+          t_real energy_sum = 0;
+          for (t_int i = 0; i < niters; ++i){            
+              energy_sum = 0;    
+              t_real tau__ =   tau *  abs_row_max;    
+              #pragma omp parallel for reduction(+:energy_sum)   
+              for (t_int j = 0; j < row.size(); ++j){
+                      if  (abs_row(j) > tau__)
+                          energy_sum +=  abs_row(j) * abs_row(j) ;                    
+                  }
+              energy_sum= energy_sum/abs_row_total_energy;      
+              std::cout<<"WPROJ - ROW looping : ["<<energy_sum<<"] tau: ["<< tau__<<"] "<<i<<"\n";fflush(stdout);                                     
+              if ( (std::abs(tau - old_tau)/std::abs(old_tau) < 1e-6) and  (energy_sum>=energy)  and (std::abs(energy_sum/energy - 1) <0.001)){
+                  // std::cout<<"WPROJ - ROW energy: ["<<energy_sum<<"] tau: ["<< tau<<"] "<<i<<"\n";fflush(stdout);
+                 break;        
+
+              }  
+              else{
+                    old_tau = tau;
+                    if (energy_sum > energy)   min_tau = tau; 
+                    else{  max_tau = tau; }
+                    tau = (max_tau - min_tau) * 0.5 + min_tau;
+              }
+              if (i == niters-1)                 
+                tau = min_tau;           
+          }   
+          /* performing clipping */ 
+          // std::cout<<"\nWPROJ - ROW energy DONE \n";fflush(stdout);
+          t_real tau_n = std::max(tau * abs_row_max,1e-14);
+          // #pragma omp parallel for     
+          for (t_int j = 0; j < rowLength; ++j){
+            if (abs_row(j)> tau_n){ 
+              std::cout<<"WPROJ - ROW value: ["<<std::abs(row(j))<<"] tau: ["<< tau_n<<"] "<<j<<"\n";fflush(stdout);    
+              output_row.coeffRef(j)=row(j);                  
+            }                        
+          }
+          std::cout<<"\nWPROJ - ROW energy DONE  before exit tau ["<<tau_n<<"]\n";fflush(stdout);
+
+          return output_row;
+  }
+           
   Eigen::SparseVector<t_int> sparsify_row_index(Vector<t_complex>& row, const t_real& energy){
          /*
           Takes in a row of G and returns indexes of coeff to keep in the row sparse version 
@@ -203,7 +324,7 @@ namespace purify {
                           energy_sum +=  abs_row(i) * abs_row(i) ;                    
                   }
               energy_sum= energy_sum/abs_row_total_energy;                                           
-              if ( (std::abs(tau - old_tau)/old_tau < 1e-3) and  (energy_sum>=energy)  and (std::abs(energy_sum/energy - 1) <0.001)){
+              if ( (std::abs(tau - old_tau)/std::abs(old_tau) < 1e-3) and  (energy_sum>=energy)  and (std::abs(energy_sum/energy - 1) <0.001)){
                   PURIFY_DEBUG("CHIRP - ROW Energy:{}",energy_sum);
                  break;        
               }  
@@ -230,68 +351,10 @@ namespace purify {
 
             }                        
           }
-          PURIFY_DEBUG("Row after hard-thresholding: SUPPORT:{}",sf); 
+          PURIFY_DEBUG("\nRow after hard-thresholding: SUPPORT:{}",sf); 
           return output_row;
   }
-
-  Eigen::SparseVector<t_complex> sparsify_row_values(const Vector<t_complex>& row, const t_real& energy){
-         /*
-          Takes in a row of G and returns indexes of coeff to keep in the row sparse version 
-          energy:: how much energy - in l2 sens - to keep after hard-thresholding 
-         */
-          
-          t_real tau = 0.5;
-          t_real old_tau = -1;
-          t_int niters = 200;
-          Vector<t_real> abs_row = row.cwiseAbs();
-          t_real abs_row_max = abs_row.maxCoeff();
-          t_real abs_row_total_energy = (abs_row.array() * abs_row.array()).sum();
-          t_real min_tau = 0;
-          t_real max_tau = 0.5;
-          t_int rowLength = row.size();
-
-          Eigen::SparseVector<t_complex> output_row(row.size());
-          if ( energy == 1){ 
-            #pragma omp parallel for 
-            for (t_int i = 0; i < row.size(); ++i){
-              if (std::abs(row(i)) >1e-14)
-                 output_row.coeffRef(i)=row(i);
-            }
-            return output_row;
-          }  
-          /* calculating threshold  */
-          t_real energy_sum = 0;
-          for (t_int i = 0; i < niters; ++i){            
-              energy_sum = 0;           
-              #pragma omp parallel for  reduction(+:energy_sum)   
-                  for (t_int i = 0; i < rowLength; ++i){
-                      if  (abs_row(i)/abs_row_max > tau)
-                          energy_sum +=  abs_row(i) * abs_row(i) ;                    
-                  }
-              energy_sum= energy_sum/abs_row_total_energy;                                           
-              if ( (std::abs(tau - old_tau)/old_tau < 1e-3) and  (energy_sum>=energy)  and (std::abs(energy_sum/energy - 1) <0.001)){
-                  PURIFY_DEBUG("WPROJ - ROW energy:{}",energy_sum);
-                 break;        
-              }  
-              else{
-                    old_tau = tau;
-                    if (energy_sum > energy)   min_tau = tau; 
-                    else{  max_tau = tau; }
-                    tau = (max_tau - min_tau) * 0.5 + min_tau;
-              }
-              if (i == niters-1)                 
-                tau = min_tau;           
-          }   
-          /* performing clipping */ 
-          #pragma omp parallel for          
-          for (t_int i = 0; i < rowLength; ++i){
-            if (abs_row(i)/abs_row_max > tau){     
-              output_row.coeffRef(i)=row(i);                  
-            }                        
-          }
-          return output_row;
-  }
-       
+    
   t_real sparsity_sp(const Sparse<t_complex> & Gmat){
 
       const t_int Nvis = Gmat.rows();
