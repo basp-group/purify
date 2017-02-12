@@ -284,66 +284,6 @@ namespace purify {
       PURIFY_DEBUG(" Sparsity perc:  {}", val);
       return val;
   }
-  Eigen::SparseVector<t_complex> sparsify_row_values(const Vector<t_complex>& row, const t_real& energy){
-         /*
-          Takes in a row of G and returns indexes of coeff to keep in the row sparse version 
-          energy:: how much energy - in l2 sens - to keep after hard-thresholding 
-         */
-          
-          t_real tau = 0.5;
-          t_real old_tau = -1;
-          t_int niters = 100;
-          const Vector<t_real> abs_row = row.cwiseAbs();
-          const t_real abs_row_max = abs_row.maxCoeff();
-          t_real abs_row_total_energy = (abs_row.array() * abs_row.array()).sum();
-          t_real min_tau = 0;
-          t_real max_tau = 0.5;
-          t_int rowLength = row.size();
-
-          Eigen::SparseVector<t_complex> output_row(row.size());
-          if ( energy == 1){ 
-            output_row =row.sparseView(0,1e-14);
-            return output_row;
-          }  
-          /* calculating threshold  */
-          t_real energy_sum = 0;
-          for (t_int i = 0; i < niters; ++i){            
-              energy_sum = 0;    
-              t_real tau__ =   tau *  abs_row_max;    
-              #pragma omp parallel for reduction(+:energy_sum)   
-              for (t_int j = 0; j < row.size(); ++j){
-                      if  (abs_row(j) > tau__)
-                          energy_sum +=  abs_row(j) * abs_row(j) ;                    
-                  }
-              energy_sum= energy_sum/abs_row_total_energy;      
-              // std::cout<<"WPROJ - ROW looping : ["<<energy_sum<<"] tau: ["<< tau__<<"] "<<i<<"\n";fflush(stdout);                                     
-              if ( (std::abs(tau - old_tau)/std::abs(old_tau) < 1e-6) and  (energy_sum>=energy)  and (std::abs(energy_sum/energy - 1) <0.001)){
-                 break;        
-
-              }  
-              else{
-                    old_tau = tau;
-                    if (energy_sum > energy)   min_tau = tau; 
-                    else{  max_tau = tau; }
-                    tau = (max_tau - min_tau) * 0.5 + min_tau;
-              }
-              if (i == niters-1)                 
-                tau = min_tau;           
-          }   
-          /* performing clipping */ 
-          // std::cout<<"\nWPROJ - ROW energy DONE \n";fflush(stdout);
-          t_real tau_n = std::max(tau * abs_row_max,1e-14);
-          // #pragma omp parallel for     
-          for (t_int j = 0; j < rowLength; ++j){
-            if (abs_row(j)> tau_n){ 
-              // std::cout<<"WPROJ - ROW value: ["<<std::abs(row(j))<<"] tau: ["<< tau_n<<"] "<<j<<"\n";fflush(stdout);    
-              output_row.insert(j)=row(j);                  
-            }                        
-          }
-          // std::cout<<"\nWPROJ - ROW energy DONE  before exit tau ["<<tau_n<<"]\n";fflush(stdout);
-
-          return output_row;
-  }
   t_real snr_metric(const Image<t_real> &model, const Image<t_real> &solution){
       /*
         Returns SNR of the estimated model image 

@@ -83,6 +83,7 @@ int main( int nargs, char const** args ){
   const t_int wavelet_level = 4; // max level for the DB decomposition considred for now
   bool correct_w_term = true; // correct for w
   utilities::vis_params uv_data;
+  t_int norm_iterations =200;
 
   /*Output files & vars*/
   Vector<t_real> SNR(runs);
@@ -170,7 +171,7 @@ int main( int nargs, char const** args ){
       const t_real energy_fraction_wproj =energyG;
       PURIFY_INFO("Setting measurement operator");
       MeasurementOperator SimMeasurements(uv_data, kernelSizeU, kernelSizeV,kernel_name, 
-                      widthUp, heightUp,10,overSample,cell_x, cell_y, weighting_type,
+                      widthUp, heightUp,norm_iterations,overSample,cell_x, cell_y, weighting_type,
                       RobustW, true, energy_fraction_chirp,energy_fraction_wproj,"none",false); // Create Measurement Operator
       SimMeasurements.C.resize(0,0);
 

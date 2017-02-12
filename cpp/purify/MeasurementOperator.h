@@ -27,7 +27,7 @@ public:
   MeasurementOperator();
   MeasurementOperator(const utilities::vis_params &uv_vis_input, const t_int &Ju, const t_int &Jv,
                       const std::string &kernel_name, const t_int &imsizex, const t_int &imsizey,
-                      const t_int &norm_iterations = 20, const t_real &oversample_factor = 2,
+                      const t_int &norm_iterations = 100, const t_real &oversample_factor = 2,
                       const t_real &cell_x = 1, const t_real &cell_y = 1,
                       const std::string &weighting_type = "none", const t_real &R = 0,
                       bool use_w_term = false, const t_real &energy_fraction_chirp = 0.99999,const t_real &energy_fraction_wproj = 1,
@@ -49,7 +49,7 @@ public:                                                                         
   PURIFY_MACRO(kernel_name, std::string, "kb");
   PURIFY_MACRO(imsizex, t_int, 512);
   PURIFY_MACRO(imsizey, t_int, 512);
-  PURIFY_MACRO(norm_iterations, t_int, 20);
+  PURIFY_MACRO(norm_iterations, t_int, 100);
   PURIFY_MACRO(oversample_factor, t_real, 2);
   PURIFY_MACRO(cell_x, t_real, 1);
   PURIFY_MACRO(cell_y, t_real, 1);
