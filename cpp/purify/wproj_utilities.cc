@@ -152,8 +152,8 @@ namespace purify {
 
             Eigen::SparseVector<t_real> absRow = row.cwiseAbs();
             sparsify_row_sparse(absRow, 1);
-            PURIFY_DEBUG("Number of nonzeros entries in chirp :[{}]",chirp.nonZeros());   
-            PURIFY_DEBUG("Number of nonzeros entries in sparseRow :[{}]",absRow.nonZeros());
+            // PURIFY_DEBUG("Number of nonzeros entries in chirp :[{}]",chirp.nonZeros());   
+            // PURIFY_DEBUG("Number of nonzeros entries in sparseRow :[{}]",absRow.nonZeros());
            
             for (Eigen::SparseVector<t_real>::InnerIterator itr(absRow); itr; ++itr){
                 #pragma omp critical (load1)  
@@ -340,7 +340,40 @@ namespace purify {
           return chirp_; 
   }    
 
-  
+   t_real upsample_ratio_sim(const utilities::vis_params& uv_vis, const t_real& L, const t_real& M, const t_int& x_size, const t_int& y_size, const t_int& multipleOf){
+            /*
+              returns the upsampling (in Fourier domain) ratio
+            */    
+            const Vector<t_real> & u = uv_vis.u.cwiseAbs();
+            const Vector<t_real> & v = uv_vis.v.cwiseAbs();
+            const Vector<t_real> & w = uv_vis.w.cwiseAbs();
+            Vector<t_real> uvdist =  (u.array() * u.array() + v.array() * v.array()).sqrt();
+            t_real bandwidth = 2 * uvdist.maxCoeff();
+            // std::cout<<"\nDEBUG: bandwidth "<<bandwidth;
+            Vector<t_real> bandwidth_up_vector = 2 * ( uvdist + w * L * 0.5);
+            t_real bandwidth_up = bandwidth_up_vector.maxCoeff();
+            t_real ratio = bandwidth_up / bandwidth;
+            // std::cout<<"\nDEBUG: bandwidthUP "<<bandwidth_up;
+
+            // std::cout<<"DEBUG:Initially calculated Upsampling ratio:"<<ratio <<"\n";
+
+          //sets up dimensions for new image - even size
+          t_int new_x = floor(x_size * ratio)+utilities::mod(floor(x_size * ratio),2);
+          t_int new_y = floor(y_size * ratio)+utilities::mod(floor(y_size * ratio),2);     
+          if (utilities::mod(new_x,multipleOf) !=0)  new_x=multipleOf*floor((t_real)new_x/multipleOf)+ multipleOf;
+            if (utilities::mod(new_y,multipleOf) !=0)  new_y=multipleOf*floor((t_real)new_y/multipleOf)+ multipleOf;
+          
+            // if (mod(new_y,multipleOf) !=0) std::cout <<"\nDEBUG: (in upsample_ratio_sim) ERROR!!!!!!  --- IMAGE SIZE y\n ";
+            // if (mod(new_x,multipleOf) !=0) std::cout <<"\nDEBUG: (in upsample_ratio_sim) ERROR!!!!!!  --- IMAGE SIZE x\n ";
+
+            // !!!!!!! assuming same ratio on x and y for now !!!!!!!
+            ratio = ( (t_real)new_x)/((t_real)x_size);
+
+            // std::cout<<"DEBUG: (in upsample_ratio_sim) new image size"<< new_x<<" old image size "<< x_size<<"\n"; 
+
+            return ratio;
+        }
+
 
 
 }

@@ -31,6 +31,8 @@ namespace purify {
     t_real sparsity_im(const Image<t_complex> & Cmat);
 
     Eigen::SparseVector<t_complex> generate_vect(const t_int & x_size, const t_int & y_size);
+   t_real upsample_ratio_sim(const utilities::vis_params& uv_vis, const t_real& L, const t_real& M, const t_int& x_size, const t_int& y_size, const t_int& multipleOf);
+
   }
 }
 

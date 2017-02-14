@@ -21,7 +21,7 @@ echo " "
 ########################################
 
 #NAME OF PROGRAM TO RUN
-CODENAMER="ar_old_test_super_res" #reconstruct using sdmm
+CODENAMER="super_resolution_synthetic_data" #reconstruct using sdmm
 echo " "
 echo "INFO: IMAGES ARE .fits and UVW COV ARE .vis"
 
