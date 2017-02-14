@@ -26,6 +26,7 @@ include_directories("${PROJECT_SOURCE_DIR}/cpp")
 #add_example(clean_vla LIBRARIES libpurify NOTEST)
 
 add_example(ar_old_test_super_res LIBRARIES libpurify NOTEST)
+add_example(test_conv_ar LIBRARIES libpurify NOTEST)
 
 if(data AND TARGET casacore::ms)
   add_example(casa LIBRARIES libpurify)

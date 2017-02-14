@@ -29,6 +29,8 @@ namespace purify {
 
     t_real sparsity_sp(const Sparse<t_complex> & Gmat);
     t_real sparsity_im(const Image<t_complex> & Cmat);
+
+    Eigen::SparseVector<t_complex> generate_vect(const t_int & x_size, const t_int & y_size);
   }
 }
 

@@ -7,6 +7,8 @@
 #include <Eigen/Sparse>
 #include <time.h>
 #include <omp.h>
+#include <Unsupported/Eigen/SparseExtra>
+
 #define EIGEN_DONT_PARALLELIZE
 #define EIGEN_NO_AUTOMATIC_RESIZING
 namespace purify {
@@ -29,24 +31,23 @@ namespace purify {
           const t_real L = 2 * std::sin(pi / 180.* theta_FoV_L / (60. * 60.) * 0.5);
           const t_real M = 2 * std::sin(pi / 180.* theta_FoV_M / (60. * 60.) * 0.5);
 
-          const t_real delt_x = L / x_size;
-          const t_real delt_y = M / y_size;
-          Image<t_complex> chirp = Image<t_complex>::Zero(y_size, x_size);
+          const t_real delt_x = 1*L / x_size;
+          const t_real delt_y = 1*M / y_size;
+          Image<t_complex> chirp (y_size, x_size);
           t_complex I(0, 1);
-          t_real nz=((t_real) y_size*x_size);
+          t_real nz=((t_real) y_size*x_size*1.0);
 
-          
           #pragma omp parallel for collapse(2)     
           for (t_int l = 0; l < x_size; ++l){
               for (t_int m = 0; m < y_size; ++m) {
                   t_real x = (l + 0.5 - x_size * 0.5) * delt_x;
                   t_real y = (m + 0.5 - y_size * 0.5) * delt_y;
-                  t_complex val =  std::exp(- 2 * pi * I * w_rate * (std::sqrt(1 - x*x - y*y) - 1)) * std::exp(- 2 * pi * I * (l * 0.5 + m * 0.5))/nz;                
-                  if (std::abs(val) >1e-14){
-                    chirp(m, l) = val;
-                  }
+                  t_complex val =  (std::exp(-2 * pi * I * w_rate * (std::sqrt(1-x*x - y*y)-1))) * std::exp(- 2 * pi * I * (l * 0.5 + m * 0.5))/nz;                                 
+                  chirp(l,m) = val;
+                  
               }
           }
+
           return chirp; 
   }    
 
@@ -55,36 +56,40 @@ namespace purify {
     auto fftop_ = purify::FFTOperator().fftw_flag(fft_flag);
     const t_int Npix = ftsizeu * ftsizev;
     auto chirp_image = wproj_utilities::generate_chirp(w_rate, cell_x, cell_y, ftsizeu, ftsizev); 
+    // saveMarket(chirp_image,"./outputs/chirp_image.txt");
     Matrix<t_complex> rowC;
     #pragma omp critical (fft)
     rowC = fftop_.forward(chirp_image);
+    // saveMarket(rowC,"./outputs/chirp_Fourier.txt");
     rowC.resize(Npix,1);
-    const Vector<t_real> absRow = rowC.cwiseAbs();
+    Vector<t_real> absRow = rowC.cwiseAbs();
     const t_real max_modulus_chirp  = absRow.maxCoeff();
-    Eigen::SparseVector<t_real> rowSparse=absRow.sparseView(1e-10,1);
-    wproj_utilities::sparsify_row_sparse_dense(rowSparse,max_modulus_chirp, energy_fraction);
+    Eigen::SparseVector<t_real> rowSparse=absRow.sparseView(1e-14,1);
+    sparsify_row_sparse_dense(rowSparse,max_modulus_chirp, energy_fraction);
     Eigen::SparseVector<t_complex> chirp_row(Npix);
     chirp_row.reserve(rowSparse.nonZeros());
     for (Eigen::SparseVector<t_real>::InnerIterator itr(rowSparse); itr; ++itr){
-              chirp_row.insert(itr.index()) = rowC(itr.index());
-    } 
-  
+        t_complex val = rowC(itr.index());
+        chirp_row.coeffRef(itr.index())= val;
+    }  
+    // saveMarket(chirp_row,"./outputs/chirpF_sparse.txt");
+
     return chirp_row;
   }
 
-  Eigen::SparseVector<t_complex> row_wise_convolution( Eigen::SparseVector<t_complex> &Grid,  Eigen::SparseVector<t_complex> &chirp_,  const t_int &Nx, const t_int &Ny){
+  Eigen::SparseVector<t_complex> row_wise_convolution( Eigen::SparseVector<t_complex> &Grid_,  Eigen::SparseVector<t_complex> &chirp_,  const t_int &Nx, const t_int &Ny){
       
       if (chirp_.nonZeros() ==1)
-         return Grid;
+         return Grid_;
       Eigen::SparseVector<t_complex> output_row(Nx*Ny);
-      output_row.reserve(chirp_.nonZeros()+Grid.nonZeros());
+      output_row.reserve(chirp_.nonZeros()+Grid_.nonZeros());
       t_int Nx2= Nx/2;
       t_int Ny2 = Ny/2;
       #pragma omp parallel for collapse(2)
         for(t_int i = 0; i < Nx; ++i){     
           for(t_int j = 0; j < Ny; ++j){ 
-            Eigen::SparseVector<t_complex> Chirp=chirp_;
-        
+            Eigen::SparseVector<t_complex> Chirp = chirp_;
+            Eigen::SparseVector<t_complex> Grid = Grid_;
             t_complex temp (0.0,0.0);
              
             for (Eigen::SparseVector<t_complex>::InnerIterator pix(Grid); pix; ++pix){                   
@@ -95,18 +100,21 @@ namespace purify {
               if(ii <  Nx2)   i_fftshift = ii + Nx2; 
               else{   i_fftshift = ii - Nx2;  }
               if(jj <  Ny2)   j_fftshift = jj + Ny2;
-              else{   j_fftshift = jj - Ny2;  }                     
+              else{   j_fftshift = jj - Ny2;  }  
+
               t_int  oldpixi = Nx2 - i + i_fftshift; 
-              t_int  oldpixj = Ny2 - j + j_fftshift;                 
+              t_int  oldpixj = Ny2 - j + j_fftshift;    
+
               if ((oldpixi >= 0 and oldpixi < Nx) and (oldpixj >= 0 and oldpixj < Ny)){
                 t_int chirp_pos  =  oldpixi * Ny + oldpixj   ;                             
                 t_complex val = pix.value() * Chirp.coeffRef(chirp_pos);              
-                if (std::abs(val) > 1e-10)
-                    temp +=  val;                   
+                if (std::abs(val) > 1e-16)
+                    temp = temp+ val;                   
               }                          
             }
-            if(std::abs(temp) > 1e-10){
+            if(std::abs(temp) > 1e-16){
               t_int iii,jjj;
+
               if(i >= Nx2)   iii = i - Nx2;  else{   iii = i + Nx2;   }
               if(j >= Ny2)   jjj = j - Ny2;  else{   jjj = j + Ny2;   } 
               t_int pos = utilities::sub2ind(iii,jjj,Nx,Ny); 
@@ -115,8 +123,8 @@ namespace purify {
           }  
         }
         return output_row;  
-  }   
-  
+  } 
+
   Sparse<t_complex> wprojection_matrix(const Sparse<t_complex> &Grid, const t_int& Nx, const t_int& Ny,const Vector<t_real> & w_components, const t_real &cell_x, const t_real &cell_y, const t_real& energy_fraction_chirp,const t_real& energy_fraction_wproj){
            
         typedef Eigen::Triplet<t_complex> T;
@@ -130,22 +138,28 @@ namespace purify {
         tripletList.reserve(floor(Npix*Nvis*0.2)); 
         #pragma omp parallel for 
         for(t_int m = 0;  m < Grid.outerSize(); ++m){ 
-            PURIFY_HIGH_LOG("CURRENT WPROJ - Kernel index [{}]",m);
+            PURIFY_DEBUG("CURRENT WPROJ - Kernel index [{}]",m);
+
             Eigen::SparseVector<t_complex> chirp(Npix);
-            chirp =  create_chirp_row(w_components(m),cell_x, cell_y, Nx, Ny,energy_fraction_chirp);            
-            // PURIFY_DEBUG("Number of nonzeros entries in CHIRP [{}]",chirp.nonZeros());
+            chirp =  create_chirp_row(w_components(m),cell_x, cell_y, Nx, Ny,energy_fraction_chirp);
+            // saveMarket(chirp,"./outputs/chirp"+std::to_string(m)+".txt"); 
+                    
             Eigen::SparseVector<t_complex> G_bis = Grid.row(m);  
-            // Eigen::SparseVector<t_complex> row(Npix); 
-            auto row = wproj_utilities::row_wise_convolution(G_bis,chirp,Nx,Ny); 
-            // PURIFY_DEBUG("Number of nonzeros entries in CONV Row :[{}]",row.nonZeros());
+            // saveMarket(G_bis,"./outputs/G"+std::to_string(m)+".txt"); 
+
+            auto row = row_wise_convolution(G_bis,chirp,Nx,Ny); 
+            // saveMarket(row,"./outputs/GF"+std::to_string(m)+".txt");  
+
             Eigen::SparseVector<t_real> absRow = row.cwiseAbs();
-            wproj_utilities::sparsify_row_sparse(absRow, energy_fraction_wproj);
+            sparsify_row_sparse(absRow, 1);
+            PURIFY_DEBUG("Number of nonzeros entries in chirp :[{}]",chirp.nonZeros());   
             PURIFY_DEBUG("Number of nonzeros entries in sparseRow :[{}]",absRow.nonZeros());
+           
             for (Eigen::SparseVector<t_real>::InnerIterator itr(absRow); itr; ++itr){
-              #pragma omp critical (load1)  
-                 tripletList.push_back(T(m,itr.index(),row.coeffRef(itr.index())));  
-            }         
-        }        
+                #pragma omp critical (load1)  
+                     tripletList.push_back(T(m,itr.index(),row.coeffRef(itr.index())));  
+            }
+        }       
         Sparse<t_complex> Gmat(Nvis, Npix);
         Gmat.setFromTriplets(tripletList.begin(), tripletList.end());
         PURIFY_DEBUG("\nBuilding the rows of G.. DONE!\n");
@@ -182,9 +196,7 @@ namespace purify {
                           energy_sum +=  itr.value() * itr.value() ;                    
                   }
               energy_sum= energy_sum/abs_row_total_energy;      
-              // std::cout<<"WPROJ - ROW looping : ["<<energy_sum<<"] tau: ["<< tau__<<"] "<<i<<"\n";fflush(stdout);                                     
               if ( (std::abs(tau - old_tau)/std::abs(old_tau) < 1e-6) or  ((energy_sum>=energy)  and ((energy_sum/energy - 1) <0.001))){
-                 // std::cout<<"WPROJ - ROW energy: ["<<energy_sum<<"] tau: ["<< tau<<"] "<<i<<"\n";fflush(stdout);
                  break;        
               }  
               
@@ -199,8 +211,6 @@ namespace purify {
               
               if (i == niters-1)   { 
                 tau = old_tau;      
-                // std::cout<<"WPROJ - ROW energy: ["<<energy_sum<<"] tau: ["<< tau *abs_row_max<<"] "<<i<<"\n";fflush(stdout);             
-
                 }     
           }   
           /* performing clipping */ 
@@ -208,7 +218,6 @@ namespace purify {
           row.prune(tau_n,1);
         }         
   }
-
   void sparsify_row_sparse_dense(Eigen::SparseVector<t_real> &row, const t_real &abs_row_max, const t_real &energy){
         /*
           Takes in a row of G and returns indexes of coeff to keep in the row sparse version 
@@ -234,7 +243,6 @@ namespace purify {
                           energy_sum +=  itr.value() * itr.value() ;                    
               }
               energy_sum= energy_sum/abs_row_total_energy;      
-              // std::cout<<"WPROJ - ROW looping : ["<<energy_sum<<"] tau: ["<< tau__<<"] "<<i<<"\n";fflush(stdout);                                     
               if ( (std::abs(tau - old_tau)/std::abs(old_tau) < 1e-6) or  ( (energy_sum>=energy)  and (std::abs(energy_sum/energy - 1) <0.001) )){
                  break;        
               }  
@@ -252,12 +260,9 @@ namespace purify {
           /* performing clipping */ 
           t_real tau_n = std::max(tau * abs_row_max,1e-10);
           row.prune(tau_n,1);
-          // PURIFY_DEBUG("Number of nonzeros entries in after: tau [{}] sparse CHIRP :[{}]",tau_n,row.nonZeros());
         }        
   }        
-  
-  
-           
+             
   t_real sparsity_sp(const Sparse<t_complex> & Gmat){
 
       const t_int Nvis = Gmat.rows();
@@ -306,6 +311,37 @@ namespace purify {
         t_real val = min_ratio.array().sum()/Npix;
         return val;
   }
+
+  Eigen::SparseVector<t_complex> generate_vect(const t_int & x_size, const t_int & y_size){
+      
+        t_real sigma = 1;
+        t_int W = x_size;
+        Matrix<t_complex> chirp = Image<t_complex>::Zero(y_size, x_size);
+        t_real mean = 0;
+        t_complex I(0, 1);
+        t_real step = W/2;
+
+        // t_complex sum = 0.0; // For accumulating the kernel values
+        for (int x = 0; x < W; ++x){
+            for (int y = 0; y < W; ++y){
+              t_int xx = x -step;
+              xx = xx * xx;
+              t_int yy = y - step;
+              yy = yy * yy;
+              t_complex val =  exp( -0.5 * (xx/(sigma*sigma) + yy/(sigma*sigma)) );//* std::exp(- 2 * pi * I * (x * 0.5 + y * 0.5));
+              if (std::abs(val) >1e-1 )      
+                chirp(x,y) = val;
+              else chirp(x,y) =0.0;
+            }
+        }
+      
+          chirp.resize(x_size*y_size,1);
+          Eigen::SparseVector<t_complex> chirp_ = chirp.sparseView(1e-1,1);
+          return chirp_; 
+  }    
+
+  
+
 
 }
 }
