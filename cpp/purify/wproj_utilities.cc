@@ -13,7 +13,8 @@
 #define EIGEN_NO_AUTOMATIC_RESIZING
 namespace purify {
   namespace wproj_utilities {
-  
+    t_int fft_flag = (FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
+    auto fftop_ = purify::FFTOperator().fftw_flag(fft_flag);
   t_real pi = constant::pi;
   
   Matrix<t_complex> generate_chirp(const t_real & w_rate, const t_real &cell_x, const t_real & cell_y, const t_int & x_size, const t_int & y_size){
@@ -52,8 +53,8 @@ namespace purify {
   }    
 
   Eigen::SparseVector<t_complex> create_chirp_row(const t_real & w_rate, const t_real &cell_x, const t_real & cell_y,const t_real & ftsizev, const t_real & ftsizeu, const t_real& energy_fraction){
-    t_int fft_flag = (FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
-    auto fftop_ = purify::FFTOperator().fftw_flag(fft_flag);
+    // t_int fft_flag = (FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
+    // auto fftop_ = purify::FFTOperator().fftw_flag(fft_flag);
     const t_int Npix = ftsizeu * ftsizev;
     auto chirp_image = wproj_utilities::generate_chirp(w_rate, cell_x, cell_y, ftsizeu, ftsizev); 
     // saveMarket(chirp_image,"./outputs/chirp_image.txt");
@@ -69,8 +70,8 @@ namespace purify {
     Eigen::SparseVector<t_complex> chirp_row(Npix);
     chirp_row.reserve(rowSparse.nonZeros());
     for (Eigen::SparseVector<t_real>::InnerIterator itr(rowSparse); itr; ++itr){
-        t_complex val = rowC(itr.index());
-        chirp_row.coeffRef(itr.index())= val;
+        // t_complex val = rowC(itr.index());
+        chirp_row.insert(itr.index())= rowC(itr.index());
     }  
     // saveMarket(chirp_row,"./outputs/chirpF_sparse.txt");
 
@@ -151,7 +152,7 @@ namespace purify {
             // saveMarket(row,"./outputs/GF"+std::to_string(m)+".txt");  
 
             Eigen::SparseVector<t_real> absRow = row.cwiseAbs();
-            sparsify_row_sparse(absRow, 1);
+            sparsify_row_sparse(absRow, energy_fraction_wproj);
             // PURIFY_DEBUG("Number of nonzeros entries in chirp :[{}]",chirp.nonZeros());   
             // PURIFY_DEBUG("Number of nonzeros entries in sparseRow :[{}]",absRow.nonZeros());
            
