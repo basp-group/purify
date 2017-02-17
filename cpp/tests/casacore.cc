@@ -179,28 +179,25 @@ TEST_CASE("Channel iteration") {
   }
 }
 
-// TEST_CASE("Read Measurement") {
-//   purify::utilities::vis_params const vis_file =
-//   purify::utilities::read_visibility(vla_filename("at166B.3C129.c0I.vis"));
-//   purify::utilities::vis_params const ms_file =
-//   purify::casa::read_measurementset(vla_filename("at166B.3C129.c0.ms"),
-//   purify::casa::MeasurementSet::ChannelWrapper::polarization::I);
-//
-//   REQUIRE(vis_file.u.size() == ms_file.u.size());
-//
-//   CHECK(vis_file.u.isApprox(ms_file.u, 1e-6));
-//   CHECK(vis_file.v.isApprox(ms_file.v, 1e-6));
-//   CHECK(vis_file.vis.isApprox(ms_file.vis, 1e-6));
-//   purify::utilities::vis_params const ms_fileLL =
-//   purify::casa::read_measurementset(vla_filename("at166B.3C129.c0.ms"),
-//   purify::casa::MeasurementSet::ChannelWrapper::polarization::LL);
-//   purify::utilities::vis_params const ms_fileRR =
-//   purify::casa::read_measurementset(vla_filename("at166B.3C129.c0.ms"),
-//   purify::casa::MeasurementSet::ChannelWrapper::polarization::RR);
-//   purify::Vector<purify::t_complex> const weights = (1./(1./ms_fileLL.weights.array() +
-//   1./ms_fileRR.weights.array())).matrix();
-//   CHECK(vis_file.weights.real().isApprox(weights.real(), 1e-6));
-// }
+TEST_CASE("Read Measurement") {
+  if (boost::filesystem::exists(purify::notinstalled::ngc5921_2_vis())) {
+    purify::utilities::vis_params const vis_file =
+    purify::utilities::read_visibility(purify::notinstalled::ngc5921_2_vis());
+    purify::utilities::vis_params const ms_file =
+    purify::casa::read_measurementset(purify::notinstalled::ngc5921_2_ms());
+
+    REQUIRE(vis_file.u.size() == ms_file.u.size());
+    CAPTURE(vis_file.u.tail(5));
+    CAPTURE(ms_file.u.tail(5));
+    CAPTURE(ms_file.u(1000)/vis_file.u(1000));
+    CAPTURE(ms_file.vis(1000)/vis_file.vis(1000));
+    CAPTURE(ms_file.weights(1000)/vis_file.weights(1000));
+    CHECK(vis_file.u.isApprox(ms_file.u, 1e-3));
+    CHECK(vis_file.v.isApprox(ms_file.v, 1e-3));
+    CHECK(vis_file.vis.isApprox(ms_file.vis, 1e-6));
+    CHECK(vis_file.weights.real().isApprox(ms_file.weights.real(), 1e-6));
+  }
+}
 
 TEST_CASE("Direction") {
   auto const ms = purify::casa::MeasurementSet(purify::notinstalled::ngc5921_2_ms());
