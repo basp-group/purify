@@ -71,7 +71,7 @@ namespace purify {
     chirp_row.reserve(rowSparse.nonZeros());
     for (Eigen::SparseVector<t_real>::InnerIterator itr(rowSparse); itr; ++itr){
         // t_complex val = rowC(itr.index());
-        chirp_row.insert(itr.index())= rowC(itr.index());
+        chirp_row.coeffRef(itr.index())= rowC(itr.index());
     }  
     // saveMarket(chirp_row,"./outputs/chirpF_sparse.txt");
 
@@ -83,7 +83,7 @@ namespace purify {
       if (chirp_.nonZeros() ==1)
          return Grid_;
       Eigen::SparseVector<t_complex> output_row(Nx*Ny);
-      output_row.reserve(chirp_.nonZeros()+Grid_.nonZeros());
+      output_row.reserve(Nx*Ny);
       t_int Nx2= Nx/2;
       t_int Ny2 = Ny/2;
       #pragma omp parallel for collapse(2)
@@ -109,20 +109,21 @@ namespace purify {
               if ((oldpixi >= 0 and oldpixi < Nx) and (oldpixj >= 0 and oldpixj < Ny)){
                 t_int chirp_pos  =  oldpixi * Ny + oldpixj   ;                             
                 t_complex val = pix.value() * Chirp.coeffRef(chirp_pos);              
-                if (std::abs(val) > 1e-16)
+                // if (std::abs(val) > 1e-18)
                     temp = temp+ val;                   
               }                          
             }
-            if(std::abs(temp) > 1e-16){
+            if(std::abs(temp) > 1e-18){
               t_int iii,jjj;
 
               if(i >= Nx2)   iii = i - Nx2;  else{   iii = i + Nx2;   }
               if(j >= Ny2)   jjj = j - Ny2;  else{   jjj = j + Ny2;   } 
               t_int pos = utilities::sub2ind(iii,jjj,Nx,Ny); 
-              output_row.insert(pos)= temp;       
+              output_row.coeffRef(pos)= temp;       
             }            
           }  
         }
+        std::cout<<"\noutput_row  1: "<<output_row.nonZeros()<<" elements";fflush(stdout);
         return output_row;  
   } 
 
@@ -313,12 +314,12 @@ namespace purify {
         return val;
   }
 
-  Eigen::SparseVector<t_complex> generate_vect(const t_int & x_size, const t_int & y_size){
+  Eigen::SparseVector<t_complex> generate_vect(const t_int & x_size, const t_int & y_size,const t_real &sigma,const t_real &mean){
       
-        t_real sigma = 1;
+        // t_real sigma = 3;
         t_int W = x_size;
         Matrix<t_complex> chirp = Image<t_complex>::Zero(y_size, x_size);
-        t_real mean = 0;
+        // t_real mean = 0;
         t_complex I(0, 1);
         t_real step = W/2;
 
@@ -330,14 +331,14 @@ namespace purify {
               t_int yy = y - step;
               yy = yy * yy;
               t_complex val =  exp( -0.5 * (xx/(sigma*sigma) + yy/(sigma*sigma)) );//* std::exp(- 2 * pi * I * (x * 0.5 + y * 0.5));
-              if (std::abs(val) >1e-1 )      
+              if (std::abs(val) >1e-5 )      
                 chirp(x,y) = val;
               else chirp(x,y) =0.0;
             }
         }
       
           chirp.resize(x_size*y_size,1);
-          Eigen::SparseVector<t_complex> chirp_ = chirp.sparseView(1e-1,1);
+          Eigen::SparseVector<t_complex> chirp_ = chirp.sparseView(1e-5,1);
           return chirp_; 
   }    
 

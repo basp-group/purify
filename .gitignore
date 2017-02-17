@@ -13,3 +13,11 @@ ipython-*.log
 data/images/GC.C.128.fits
 
 data/images/GC.C.64.fits
+
+test_conv.m
+
+*.m~
+
+*.m
+
+*.m
