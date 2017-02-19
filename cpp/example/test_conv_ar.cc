@@ -145,74 +145,36 @@ int main( int nargs, char const** args ){
       MeasurementOperator SimMeasurements(uv_data, kernelSizeU, kernelSizeV,kernel_name, 
                       widthOr, heightOr,norm_iterations,overSample,cell_x, cell_y, weighting_type,
                       RobustW, false, energy_fraction_chirp,energy_fraction_wproj,"none",false); // Create Measurement Operator
-      
-     
-    for (t_int m=1; m<2 ;m++){//SimMeasurements.G.outerSize()
+      t_real sigma =1;
+      t_real mean =0;
+    
+      Sparse<t_complex> vect  = wproj_utilities::generate_vect(finalszx,finalszy,sigma,mean);
+      Eigen::saveMarket(vect.transpose(),"./outputs/vect.txt");
+      for (t_int m=1; m<SimMeasurements.G.outerSize() ;m++){
+      PURIFY_DEBUG("CURRENT WPROJ - Kernel index [{}]",m);
 
       Eigen::SparseVector<t_complex> G_bis = SimMeasurements.G.row(m);
+      string name ="./outputs/gbis"+std::to_string(m)+".txt";
+      Eigen::saveMarket(G_bis,name);
 
-      saveMarket(G_bis,"./outputs/gbis.txt");
-      Eigen::SparseVector<t_complex> vect  = wproj_utilities::generate_vect(finalszx,finalszy);
-      saveMarket(vect,"./outputs/vect.txt");
-      t_int cmpt1=0;
-      std::cout<< "in1 = zeros("<<finalszx<<","<<finalszx<<");";
-     
-      std::cout<<"\n \n"; fflush(stdout);
+      t_int cmpt1=0;     
+      std::cout<<"\n"; fflush(stdout);
       
-      std::cout<<"\nIn  1: "<<G_bis.nonZeros()<<" elements\n";fflush(stdout);
-      std::cout<<"\nIn  2: "<<vect.nonZeros()<<" elements\n";fflush(stdout); 
-      std::cout<<"\n \n"; fflush(stdout);
-      PURIFY_HIGH_LOG("FIRST CONVOLUTION!");
-      Eigen::SparseVector<t_complex> out_conv = wproj_utilities::row_wise_convolution(G_bis,vect,finalszx,finalszy);
-      PURIFY_HIGH_LOG("DONE");
+      std::cout<<"\nIn  1: "<<G_bis.nonZeros()<<" elements";fflush(stdout);
+      std::cout<<"\nIn  2: "<<vect.nonZeros()<<" elements";fflush(stdout); 
+      std::cout<<"\n"; fflush(stdout);
+      // Sparse<t_complex> out_conv(finalszx*finalszx,1);
+      auto out_conv= wproj_utilities::row_wise_convolution(G_bis,vect,finalszx,finalszy);
+      string name_ ="./outputs/out"+std::to_string(m)+".txt";
+      Eigen::saveMarket(out_conv.transpose(),name_);
 
-      saveMarket(out_conv,"./outputs/out1.txt");
-
-      std::cout<<"\nIn VECT 1: "<<out_conv.nonZeros()<<" elements\n";fflush(stdout);
-
-      t_int cmpt5=0;
+      std::cout<<"\nOUT VECT 1: "<<out_conv.nonZeros()<<" elements\n";fflush(stdout);
      
       
-      std::cout<<"\n \n"; fflush(stdout);
+      std::cout<<"\n"; fflush(stdout);
     }
       
     }
   return 0; 
 
 }
-      // t_int cmpt3=0;
-      // std::cout<<"\n \n"; fflush(stdout);
-      // std::cout<< "out1 = zeros("<<finalszx<<","<<finalszx<<");";
-      // for(Eigen::SparseVector<t_complex>::InnerIterator itr(out_conv); itr; ++itr){
-      //     cmpt3++;
-      //     std::cout<<"out1("<<itr.index()<<")= "<<std::abs(itr.value())<<"; ";fflush(stdout);        
-      // }
-      // t_int cmpt4=0;
-
-      // std::cout<<"\n \n"; fflush(stdout);
-      // std::cout<< "out2 = zeros("<<finalszx<<","<<finalszx<<");";
-      // for(Eigen::SparseVector<t_complex>::InnerIterator itr(out_conv_bis); itr; ++itr){
-      //     cmpt4++;
-      //     std::cout<<"out2("<<itr.index()<<")= "<<std::abs(itr.value())<<"; ";fflush(stdout);        
-      // }
-
- //  std::cout<<"\n \n"; fflush(stdout);
-       // for(Eigen::SparseVector<t_complex>::InnerIterator itr(out_conv); itr; ++itr){
-          // cmpt5++;
-          // assert(std::abs(out_conv_bis.coeffRef(itr.index())) ==std::abs(out_conv.coeffRef(itr.index())));
-          // if (std::abs(out_conv_bis.coeffRef(itr.index())) ==std::abs(out_conv.coeffRef(itr.index()))){
-          // std::cout<<".";fflush(stdout); 
-        // }    
-           // else {std::cout<<"*";fflush(stdout);}  
-      // }
-// t_int cmpt2=0;
-      // std::cout<< "in2 = zeros("<<finalszx<<","<<finalszx<<");";
-      // for(Eigen::SparseVector<t_complex>::InnerIterator itr(vect); itr; ++itr){
-      //     cmpt2++;
-      //     std::cout<<"in2("<<itr.index()<<")= "<<std::abs(itr.value())<<"; ";fflush(stdout);
-      // }
-
- // for(Eigen::SparseVector<t_complex>::InnerIterator itr(G_bis); itr; ++itr){
-      //     cmpt1++;
-      //     std::cout<<"in1("<<itr.index()<<")= "<<std::abs(itr.value())<<"; ";fflush(stdout);
-      // }
