@@ -26,5 +26,4 @@ TEST_CASE("sparse [iterator]", "[iterator]") {
       PURIFY_HIGH_LOG("{} {} {}", pix.row(), pix.col(), std::real(pix.value()));
     }
   }
-  // CHECK(expected.isApprox(output, 1e-13));
 }
