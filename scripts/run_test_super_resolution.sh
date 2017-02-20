@@ -2,7 +2,7 @@
 #TO KEEP
 
 #LOCATION OF PURIFY INSTALLATION
-PURIFYPATH="/Users/Arwina/GitHub/purify-cpp-wprojection-omp/"
+PURIFYPATH="/Users/Arwina/GitHub/purify-wproj/"
 
 #LOCATION OF THE BUILD FOLDER
 BUILDDIR=$PURIFYPATH"build/"
