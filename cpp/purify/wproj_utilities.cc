@@ -209,7 +209,7 @@ namespace purify {
                   if  (itr.value() > tau__)
                      energy_sum +=  itr.value() * itr.value()/abs_row_total_energy ;                    
               }                
-              if ( (std::abs(tau - old_tau)/std::abs(old_tau) < 1e-4) and  ((energy_sum>=energy)  and (((energy_sum/energy)-1)<0.01))){
+              if ( (std::abs(tau - old_tau)/std::abs(old_tau) < 1e-3) and  ((energy_sum>=energy)  and (((energy_sum/energy)-1)<0.01))){
                 converge_ =true;
                 break;        
               }  
@@ -389,62 +389,6 @@ namespace purify {
             // std::cout<<"DEBUG: (in upsample_ratio_sim) new image size"<< new_x<<" old image size "<< x_size<<"\n"; 
 
             return ratio;
-        }
-
- Sparse<t_complex> row_wise_convolution_bis( Eigen::SparseVector<t_complex> &Grid_,  Sparse<t_complex> &chirp_,  const t_int &Nx, const t_int &Ny){
-      
-      if (chirp_.nonZeros() ==1)
-         return Grid_.transpose();
-
-      typedef Eigen::Triplet<t_complex> T;
-      std::vector<T> tripletList;
-
-      const t_int row_sz = 4* (Grid_.nonZeros() + chirp_.nonZeros());
-      tripletList.reserve(floor(row_sz)); 
-
-      t_int Nx2= Nx/2;
-      t_int Ny2 = Ny/2;
-      // t_int sup =0;
-      
-      #pragma omp parallel for collapse(2) 
-        for(t_int i = 0; i < Nx; ++i){     
-          for(t_int j = 0; j < Ny; ++j){ 
-            Sparse<t_complex> Chirp = chirp_;
-            Eigen::SparseVector<t_complex> Grid = Grid_;
-            t_complex temp (0.0,0.0);
-             
-            for (Eigen::SparseVector<t_complex>::InnerIterator pix(Grid); pix; ++pix){                   
-              Vector<t_int> image_row_col = utilities::ind2sub(pix.index(), Nx, Ny);  
-              t_int ii = image_row_col(0); 
-              t_int jj = image_row_col(1);
-              t_int  oldpixi,oldpixj ;   
-              if(ii <  Nx2)  { oldpixi = Nx + ii -i; }
-              else{ oldpixi = ii - i; }
-              if ((oldpixi >= 0 and oldpixi < Nx)){
-                if(jj <  Ny2)   oldpixj = Nx+ jj -j ; 
-                else{   oldpixj = jj - j;  }                 
-
-                if((oldpixj >= 0 and oldpixj < Ny)){
-                  t_int chirp_pos  =  utilities::sub2ind(oldpixi,oldpixj,Nx,Ny)   ;                             
-                  t_complex val = pix.value() * Chirp.coeffRef(0,chirp_pos);              
-                  if (std::abs(val) > 1e-16)
-                    temp +=  val;                   
-                }
-              }                          
-            }
-            if(std::abs(temp) > 1e-16){
-              t_int iii,jjj;
-              if(i >= Nx2)   iii = i - Nx2;  else{   iii = i + Nx2;   }
-              if(j >= Ny2)   jjj = j - Ny2;  else{   jjj = j + Ny2;   } 
-              t_int pos = utilities::sub2ind(iii,jjj,Nx,Ny); 
-              #pragma omp critical (load1)  
-              tripletList.push_back(T(0,pos,temp));  
-            }            
-          }  
-        }
-        Sparse<t_complex> output_row(1,Nx*Ny);
-        output_row.setFromTriplets(tripletList.begin(), tripletList.end());
-        return output_row;  
   }
 }
 }
