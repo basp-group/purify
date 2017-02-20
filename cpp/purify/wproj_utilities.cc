@@ -13,8 +13,9 @@
 #define EIGEN_NO_AUTOMATIC_RESIZING
 namespace purify {
   namespace wproj_utilities {
-    t_int fft_flag = (FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
-    auto fftop_ = purify::FFTOperator().fftw_flag(fft_flag);
+  
+  t_int fft_flag = (FFTW_ESTIMATE | FFTW_PRESERVE_INPUT);
+  auto fftop_ = purify::FFTOperator().fftw_flag(fft_flag);
   t_real pi = constant::pi;
   
   Matrix<t_complex> generate_chirp(const t_real & w_rate, const t_real &cell_x, const t_real & cell_y, const t_int & x_size, const t_int & y_size){
@@ -61,18 +62,16 @@ namespace purify {
 
     const t_int Npix = ftsizeu * ftsizev;
     auto chirp_image = wproj_utilities::generate_chirp(w_rate, cell_x, cell_y, ftsizeu, ftsizev); 
-    // Eigen::saveMarket(chirp_image,"./outputs/chirp_image.txt");
     Matrix<t_complex> rowC;
     #pragma omp critical (fft)
     rowC = fftop_.forward(chirp_image);
-    // Eigen::saveMarket(rowC,"./outputs/chirp_Fourier.txt");
     rowC.resize(1,Npix);  
     t_real thres =sparsify_row_dense_thres(rowC, energy_fraction); 
     typedef Eigen::Triplet<t_complex> T;
     std::vector<T> tripletList;  
     tripletList.reserve(Npix); 
     t_int sp=0;
-    for (t_int kk;kk<Npix;kk++){
+    for (t_int kk; kk<Npix; kk++){
       if(std::abs(rowC(0,kk))>thres){
         sp++;
         tripletList.push_back(T(0,kk,rowC(0,kk))); 
@@ -80,10 +79,8 @@ namespace purify {
     }  
     Sparse<t_complex> chirp_row(1,Npix);
     chirp_row.setFromTriplets(tripletList.begin(), tripletList.end());
-    // PURIFY_HIGH_LOG("Chirp kernels: energy [{}] {} {} \n",thres,sp,rowC.cwiseAbs().maxCoeff());
-    assert(chirp_row.nonZeros() > 0);
-    
-
+    // PURIFY_HIGH_LOG("Chirp kernels: energy  SP [{}] thres{} \n",sp,thres);
+    assert(chirp_row.nonZeros() > 0);   
     return chirp_row;
   }
 
@@ -116,10 +113,10 @@ namespace purify {
               t_int jj = image_row_col(1);
 
               t_int  oldpixi = ii - i ;
-              if(ii <  Nx2)   oldpixi += Nx;     
+              if(ii <  Nx2)   oldpixi += Nx; //fftshift    
               if ((oldpixi >= 0 and oldpixi < Nx)){
                 t_int  oldpixj = jj - j ;   
-                if(jj <  Ny2)   oldpixj += Ny ; 
+                if(jj <  Ny2)   oldpixj += Ny ;  //fftshift 
                 if ((oldpixj >= 0 and oldpixj < Ny)){
                   t_int pos = oldpixi * Ny + oldpixj;
                   t_complex chirp_val = Chirp.coeffRef(pos) ;
@@ -158,29 +155,22 @@ namespace purify {
         #pragma omp parallel for 
         for(t_int m = 0;  m < Grid.outerSize(); ++m){ 
             PURIFY_DEBUG("CURRENT WPROJ - Kernel index [{}]",m);
-
             Sparse<t_complex> chirp(1,Npix);
             chirp =  create_chirp_row(w_components(m),cell_x, cell_y, Nx, Ny,energy_fraction_chirp);
-            saveMarket(chirp.transpose(),"./outputs/chirp"+std::to_string(m)+".txt"); 
-                    
             Eigen::SparseVector<t_complex> G_bis = Grid.row(m);  
-             saveMarket(G_bis,"./outputs/G"+std::to_string(m)+".txt"); 
 
             Sparse<t_complex> kernel(1,Npix);
             kernel= row_wise_convolution(G_bis,chirp,Nx,Ny); 
-            saveMarket(kernel.transpose(),"./outputs/GF"+std::to_string(m)+".txt");  
 
             Sparse<t_real> absRow(1,Npix);
             absRow = kernel.cwiseAbs();
-            const t_real thres = sparsify_row_thres(absRow, energy_fraction_wproj);
-        
+            const t_real thres = sparsify_row_thres(absRow, energy_fraction_wproj);       
             for (Sparse<t_complex>::InnerIterator itr(kernel,0); itr; ++itr){
                 if (std::abs(itr.value())>thres) {
                 #pragma omp critical (load1)                
                      tripletList.push_back(T(m,itr.index(),itr.value()));  
                 }
-            }
-         
+            }        
             PURIFY_DEBUG("DONE - Kernel index [{}]",m);
 
         }       
@@ -195,210 +185,99 @@ namespace purify {
           Takes in a row of G and returns indexes of coeff to keep in the row sparse version 
           energy:: how much energy - in l2 sens - to keep after hard-thresholding 
         */
-          t_real thres = 1e-18;
+        t_real thres = 1e-16;
         if ( energy <1){
+          const t_real abs_row_total_energy = (row.cwiseProduct(row)).sum();
           t_real tau = 0.5;
           t_real old_tau = 1;
           t_int niters = 200;
-          const t_real abs_row_total_energy = (row.cwiseProduct(row)).sum();
           t_real min_tau = 0.0;
           t_real max_tau = 1;
-          t_int rowLength = row.size();
           t_real abs_row_max = 0;
-
           for (Sparse<t_real>::InnerIterator itr(row,0); itr; ++itr){
-                      if  (itr.value() > abs_row_max)
-                          abs_row_max =itr.value() ;                    
+              if  (itr.value() > abs_row_max)
+                  abs_row_max =itr.value() ;                    
           }
           /* calculating threshold  */
           t_real energy_sum = 0;
           t_real tau__=0;
+          bool converge_ =false;
           for (t_int i = 0; i < niters; ++i){            
               energy_sum = 0;    
               tau__ =   tau *  abs_row_max;    
               for (Sparse<t_real>::InnerIterator itr(row,0); itr; ++itr){
-                      if  (itr.value() > tau__)
-                          energy_sum +=  itr.value() * itr.value() ;                    
-                  }
-              energy_sum= energy_sum/abs_row_total_energy;      
-              if ( (std::abs(tau - old_tau)/std::abs(old_tau) < 1e-6) or  ((energy_sum>=energy)  and ((energy_sum/energy - 1) <0.001))){
-                 break;        
+                  if  (itr.value() > tau__)
+                     energy_sum +=  itr.value() * itr.value()/abs_row_total_energy ;                    
+              }                
+              if ( (std::abs(tau - old_tau)/std::abs(old_tau) < 1e-4) and  ((energy_sum>=energy)  and (((energy_sum/energy)-1)<0.01))){
+                converge_ =true;
+                break;        
               }  
-              if (i == niters-1)   { 
-                tau = min_tau;      
-                } 
-                else{
               old_tau = tau;         
-              if (energy_sum > energy) {
+              if (energy_sum > energy) 
                       min_tau = tau; 
-                     
-                    }
-              if (energy_sum < energy)  
-                      max_tau = tau;                
-              tau = (max_tau + min_tau)*0.5;
-            }
-              
-                  
-          }  
+              else{  
+                      max_tau = tau;   
+              }             
+              tau = (max_tau + min_tau)*0.5;                              
+          }
+          if (!converge_)   {
+              tau = min_tau;
+          }         
           thres =tau*abs_row_max; 
         }
-
-        return thres;
-                 
+        return thres;                
   }
+
   t_real  sparsify_row_dense_thres(const Matrix<t_complex>  &row, const t_real &energy){
         /*
           Takes in a row of G and returns indexes of coeff to keep in the row sparse version 
           energy:: how much energy - in l2 sens - to keep after hard-thresholding 
         */
-          t_real thres = 1e-16;
+        
+        t_real thres = 1e-16;
         if ( energy <1){
           Sparse<t_real> row_abs(row.rows(),row.cols());
+          const t_real abs_row_max = row.cwiseAbs().maxCoeff();
           row_abs = (row.cwiseAbs()).sparseView(1e-16);
-          t_real abs_row_max = row.cwiseAbs().maxCoeff();
+
+          const t_real abs_row_total_energy = (row_abs.cwiseProduct(row_abs)).sum();
           t_real tau = 0.5;
           t_real old_tau = 1;
           t_int niters = 200;
-          const t_real abs_row_total_energy = (row_abs.cwiseProduct(row_abs)).sum();
           t_real min_tau = 0.0;
           t_real max_tau = 1;
-          t_int rowLength = row_abs.cols();
 
-         
           /* calculating threshold  */
           t_real energy_sum = 0;
           t_real tau__=0;
+          bool converge_ = false;
           for (t_int i = 0; i < niters; ++i){            
               energy_sum = 0;    
               tau__ =   tau *  abs_row_max;    
               for (Sparse<t_real>::InnerIterator itr(row_abs,0); itr; ++itr){
-                      if  (itr.value() > tau__)
-                          energy_sum +=  itr.value() * itr.value() ;                    
-                  }
-              energy_sum= energy_sum/abs_row_total_energy;      
-              if ( (std::abs(tau - old_tau)/std::abs(old_tau) < 1e-4) and  ((energy_sum>=energy)  and ((energy_sum/energy - 1) <0.001))){
-                 // std::cout<<energy_sum<<".";fflush(stdout);
-                 break;        
+                  if  (itr.value() > tau__)
+                    energy_sum +=  itr.value() * itr.value()/abs_row_total_energy ;                    
+              }
+
+              if ( (std::abs(tau - old_tau)/std::abs(old_tau) < 1e-3) and  ((energy_sum>=energy)  and ((energy_sum/energy - 1) <0.01))){
+                converge_ =true;
+                break;        
               }  
-               if (i == niters-1)   { 
-                tau = min_tau;  
-                // std::cout<<energy_sum<<".";fflush(stdout);    
-                }
-                else{  
               old_tau = tau;         
-              if (energy_sum > energy) {
+              if (energy_sum > energy) 
                       min_tau = tau; 
-                     
-                    }
-              if (energy_sum < energy)  
-                      max_tau = tau;                
-              tau = (max_tau + min_tau)*0.5;
-            }
-              
-                 
-          }  
+              else{
+                      max_tau = tau;
+              }                
+              tau = (max_tau + min_tau)*0.5;                                          
+          } 
+          if (!converge_){ 
+              tau = min_tau; 
+          } 
           thres =tau*abs_row_max; 
         }
-
-        return thres;
-                 
-  }
-  void sparsify_row_sparse(Sparse<t_real> &row, const t_real &energy){
-        /*
-          Takes in a row of G and returns indexes of coeff to keep in the row sparse version 
-          energy:: how much energy - in l2 sens - to keep after hard-thresholding 
-        */
-        if ( energy <1){
-          t_real tau = 0.5;
-          t_real old_tau = 1;
-          t_int niters = 200;
-          const t_real abs_row_total_energy = (row.cwiseProduct(row)).sum();
-          t_real min_tau = 0.0;
-          t_real max_tau = 1;
-          t_int rowLength = row.size();
-          t_real abs_row_max = 0;
-
-          for (Sparse<t_real>::InnerIterator itr(row,0); itr; ++itr){
-                      if  (itr.value() > abs_row_max)
-                          abs_row_max =itr.value() ;                    
-          }
-          /* calculating threshold  */
-          t_real energy_sum = 0;
-          t_real tau__=0;
-          for (t_int i = 0; i < niters; ++i){            
-              energy_sum = 0;    
-              tau__ =   tau *  abs_row_max;    
-              for (Sparse<t_real>::InnerIterator itr(row,0); itr; ++itr){
-                      if  (itr.value() > tau__)
-                          energy_sum +=  itr.value() * itr.value() ;                    
-                  }
-              energy_sum= energy_sum/abs_row_total_energy;      
-              if ( (std::abs(tau - old_tau)/std::abs(old_tau) < 1e-4) and  ((energy_sum>=energy)  and ((energy_sum/energy - 1) <0.001))){
-                 break;        
-              }  
-               if (i == niters-1)   { 
-                tau = min_tau;      
-                } 
-                else{
-              old_tau = tau;         
-              if (energy_sum > energy) {
-                      min_tau = tau; 
-                     
-                    }
-              if (energy_sum < energy)  
-                      max_tau = tau;                
-              tau = (max_tau + min_tau)*0.5;
-              }
-                 
-          }   
-          /* performing clipping */ 
-          t_real tau_n = std::max(tau * abs_row_max,1e-16);
-          row.prune(tau_n,1);
-        }         
-  }
-  void sparsify_row_sparse_dense(Eigen::SparseVector<t_real> &row, const t_real &abs_row_max, const t_real &energy){
-        /*
-          Takes in a row of G and returns indexes of coeff to keep in the row sparse version 
-          energy:: how much energy - in l2 sens - to keep after hard-thresholding 
-        */
-        if (energy <1.0){
-          t_real tau = 0.5;
-          t_real old_tau = 1;
-          t_int niters = 100; 
-          t_real min_tau = 0;
-          t_real max_tau = 1;
-          const t_real abs_row_total_energy = (row.cwiseProduct(row)).sum();    
-          t_int rowLength = row.size();
-
-          /* calculating threshold  */
-          t_real energy_sum = 0;
-          t_real tau__=0;
-          for (t_int i = 0; i < niters; ++i){            
-              energy_sum = 0;    
-              tau__ =   tau *  abs_row_max;    
-              for (Eigen::SparseVector<t_real>::InnerIterator itr(row); itr; ++itr){
-                      if  (itr.value() > tau__)
-                          energy_sum +=  itr.value() * itr.value() ;                    
-              }
-              energy_sum= energy_sum/abs_row_total_energy;      
-              if ( (std::abs(tau - old_tau)/std::abs(old_tau) < 1e-6) or  ( (energy_sum>=energy)  and (std::abs(energy_sum/energy - 1) <0.001) )){
-                 break;        
-              }  
-              else{
-                     old_tau = tau;
-                    if (energy_sum > energy)   {
-                        min_tau = tau;
-                       }
-                    else{  max_tau = tau; }
-                    tau = (max_tau + min_tau) * 0.5 ;
-              }
-              if (i == niters-1)                 
-                tau = min_tau;           
-          }   
-          /* performing clipping */ 
-          t_real tau_n = std::max(tau * abs_row_max,1e-16);
-          row.prune(tau_n,1);
-        }        
+        return thres;                
   }        
              
   t_real sparsity_sp(const Sparse<t_complex> & Gmat){
