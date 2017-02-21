@@ -20,8 +20,9 @@ namespace purify {
     Matrix<t_complex> generate_chirp(const t_real & w_rate, const t_real &cell_x, const t_real & cell_y, const t_int & x_size, const t_int & y_size);
     //! Generates row of chirp matrix from image of chirp
     Sparse<t_complex> create_chirp_row(const t_real & w_rate, const t_real &cell_x, const t_real & cell_y,const t_real & ftsizev, const t_real & ftsizeu, const t_real& energy_fraction);
-    // //! Clips values in row of chirp matrix
+    //! Returns threshold to keep a fraction of energy in the sparse row
     t_real  sparsify_row_thres(const Sparse<t_real> &row, const t_real &energy);
+    //! Returns threshold to keep a fraction of energy in the dense row
     t_real  sparsify_row_dense_thres(const Matrix<t_complex> &row, const t_real &energy);
     //! Perform convolution with gridding matrix row and chirp matrix row
     Sparse<t_complex> row_wise_convolution( Eigen::SparseVector<t_complex> &Grid,  Sparse<t_complex> &Chirp,  const t_int &Nx,  const t_int &Ny);
