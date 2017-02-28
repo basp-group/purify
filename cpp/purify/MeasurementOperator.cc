@@ -187,23 +187,18 @@ t_real MeasurementOperator::power_method(const t_int &niters, const t_real &rela
     niters:: max number of iterations
     relative_difference:: percentage difference at which eigen value has converged
   */
-  t_real estimate_eigen_value = norm;
-  t_real old_value = 0;
-  Image<t_complex> estimate_eigen_vector = Image<t_complex>::Random(imsizey_, imsizex_);
-  estimate_eigen_vector = estimate_eigen_vector / estimate_eigen_vector.matrix().norm();
-  PURIFY_DEBUG("Starting power method");
-  PURIFY_DEBUG("Iteration: 0, norm = {}", estimate_eigen_value);
-  for(t_int i = 0; i < niters; ++i) {
-    auto new_estimate_eigen_vector
-        = MeasurementOperator::grid(MeasurementOperator::degrid(estimate_eigen_vector));
-    estimate_eigen_value = new_estimate_eigen_vector.matrix().norm();
-    estimate_eigen_vector = new_estimate_eigen_vector / estimate_eigen_value;
-    PURIFY_DEBUG("Iteration: {}, norm = {}", i + 1, estimate_eigen_value);
-    if(relative_difference > std::abs(old_value - estimate_eigen_value) / old_value)
-      break;
-    old_value = estimate_eigen_value;
-  }
-  return old_value;
+  auto degrid = [&](const Vector<t_complex> & x) -> Vector<t_complex> {
+    auto const image = Image<t_complex>::Map(x.data(), imsizey_, imsizex_);
+    return MeasurementOperator::degrid(image);
+  };
+  auto grid = [&](const Vector<t_complex> & x) -> Vector<t_complex> {
+    const Image<t_complex> image = MeasurementOperator::grid(x);
+    return Image<t_complex>::Map(image.data(), imsizey_ * imsizex_, 1);
+  };
+  std::function<Vector<t_complex>(Vector<t_complex>)> direct = degrid;
+  std::function<Vector<t_complex>(Vector<t_complex>)> indirect = grid;
+  return utilities::power_method(direct, indirect,
+      imsizex_ * imsizey_, niters, relative_difference, norm);
 }
 MeasurementOperator::MeasurementOperator(
     const utilities::vis_params &uv_vis_input, const t_int &Ju, const t_int &Jv,

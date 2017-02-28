@@ -123,6 +123,11 @@ namespace purify {
     Matrix<t_complex> re_sample_ft_grid(const Matrix<t_complex> &input, const t_real &re_sample_factor);
     //! resamples image size
     Matrix<t_complex> re_sample_image(const Matrix<t_complex> &input, const t_real &re_sample_ratio);
+    //! Power method given adjoint and direct operator functions
+    t_real power_method(std::function<Vector<t_complex>(Vector<t_complex>)> & direct,
+        std::function<Vector<t_complex>(Vector<t_complex>)> & adjoint,
+        const t_int cols,
+        const t_int niters = 100, const t_real relative_difference = 1e-8, const t_real norm = 1);
   }
 }
 
