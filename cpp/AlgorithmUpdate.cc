@@ -8,7 +8,19 @@ namespace purify {
       std::ostream &stream, const MeasurementOperator &measurements,
       const sopt::LinearTransform<sopt::Vector<sopt::t_complex>> &Psi, const t_uint channel_number)
     : params(params), stats(read_params_to_stats(params)), uv_data(uv_data), out_diagnostic(stream),
-    padmm(padmm), c_start(std::clock()), Psi(Psi), measurements(measurements), channel_number(std::to_string(channel_number)){};
+    padmm(padmm), c_start(std::clock()), Psi(Psi), measurements(measurements), channel_number(std::to_string(channel_number)){
+      auto degrid = [&measurements, &uv_data](const Vector<t_complex> & x) -> Vector<t_complex> {
+        const Image<t_complex> image = Image<t_complex>::Map(x.data(), measurements.imsizey(), measurements.imsizex());
+        return measurements.degrid(image).array() * uv_data.weights.array();
+      };
+      auto grid = [&measurements, &uv_data](const Vector<t_complex> & x) -> Vector<t_complex> {
+        const Image<t_complex> image = measurements.grid(x.array() * uv_data.weights.array());
+        return Image<t_complex>::Map(image.data(), image.size(), 1);
+      };
+      std::function<Vector<t_complex>(Vector<t_complex>)> direct = degrid;
+      std::function<Vector<t_complex>(Vector<t_complex>)> indirect = grid;
+      dynamic_range_norm = std::sqrt(utilities::power_method(direct, indirect, measurements.imsizex() * measurements.imsizey(), 100));
+    };
 
   bool AlgorithmUpdate::operator()(const Vector<t_complex> &x) {
     if (params.adapt_gamma or params.run_diagnostic){
@@ -30,13 +42,13 @@ namespace purify {
         std::string const residual_fits
           = params.name + "_residual_" + params.weighting + "_update_" + channel_number;
 
-        auto const residual = measurements.grid(y_residual);
+        auto const residual = measurements.grid(y_residual.array() * uv_data.weights.array());
         AlgorithmUpdate::save_figure(x, outfile_fits, "JY/PIXEL", 1);
         AlgorithmUpdate::save_figure(Image<t_complex>::Map(residual.data(), residual.size(), 1),
             residual_fits, "JY/PIXEL", 1);
         stats.rms
           = utilities::standard_deviation(Image<t_complex>::Map(residual.data(), residual.size(), 1));
-        stats.dr = utilities::dynamic_range(image, residual);
+        stats.dr = utilities::dynamic_range(image, residual, dynamic_range_norm);
         stats.max = residual.matrix().real().maxCoeff();
         stats.min = residual.matrix().real().minCoeff();
         // printing log information to stream

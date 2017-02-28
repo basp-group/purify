@@ -49,6 +49,7 @@ namespace purify {
       const sopt::LinearTransform<sopt::Vector<sopt::t_complex>> &Psi;
       const MeasurementOperator &measurements;
       const std::string channel_number;
+      t_real dynamic_range_norm = 1;
     private:
       //! Method to modify gamma
       void modify_gamma(Vector<t_complex> const &alpha);
