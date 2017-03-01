@@ -350,7 +350,7 @@ int main(int argc, char **argv) {
       .Phi(measurements_transform);
 
     auto convergence_function = [](const Vector<t_complex> &x) { return true; };
-    AlgorithmUpdate algo_update(params, uv_data, padmm, out_diagnostic, measurements, Psi, channel_number);
+    AlgorithmUpdate algo_update(params, uv_data, padmm, out_diagnostic, measurements, Psi, channel_number, true);
     auto lambda = [&convergence_function, &algo_update](Vector<t_complex> const &x) {
       return convergence_function(x) and algo_update(x);
     };

@@ -21,7 +21,7 @@ namespace purify {
           sopt::algorithm::ImagingProximalADMM<t_complex> &padmm, std::ostream &stream,
           const MeasurementOperator &measurements,
           const sopt::LinearTransform<sopt::Vector<sopt::t_complex>> &Psi,
-          t_uint const channel_number);
+          t_uint const channel_number, bool const use_weights);
 
       bool operator()(Vector<t_complex> const &x);
 
@@ -50,6 +50,7 @@ namespace purify {
       const MeasurementOperator &measurements;
       const std::string channel_number;
       t_real dynamic_range_norm = 1;
+      std::shared_ptr<Vector<t_complex> > weights;
     private:
       //! Method to modify gamma
       void modify_gamma(Vector<t_complex> const &alpha);
@@ -67,6 +68,9 @@ namespace purify {
         stats.iter = params.iter;
         return stats;
       }
+      //!
+      t_real dynamic_range(const Image<t_complex> &model, const Image<t_complex> &residuals,
+                     const t_real &operator_norm);
   };
 }
 #endif

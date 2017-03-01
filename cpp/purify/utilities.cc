@@ -693,7 +693,6 @@ Matrix<t_complex> re_sample_image(const Matrix<t_complex> &input, const t_real &
       for(t_int i = 0; i < niters; ++i) {
         auto new_estimate_eigen_vector
           = adjoint(direct(estimate_eigen_vector));
-        new_estimate_eigen_vector.resize(cols, 1);
         estimate_eigen_value = new_estimate_eigen_vector.matrix().norm();
         estimate_eigen_vector = new_estimate_eigen_vector / estimate_eigen_value;
         PURIFY_DEBUG("Iteration: {}, norm = {}", i + 1, estimate_eigen_value);

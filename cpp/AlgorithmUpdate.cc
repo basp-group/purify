@@ -6,20 +6,23 @@ namespace purify {
   AlgorithmUpdate::AlgorithmUpdate(const purify::Params &params, const utilities::vis_params &uv_data,
       sopt::algorithm::ImagingProximalADMM<t_complex> &padmm,
       std::ostream &stream, const MeasurementOperator &measurements,
-      const sopt::LinearTransform<sopt::Vector<sopt::t_complex>> &Psi, const t_uint channel_number)
+      const sopt::LinearTransform<sopt::Vector<sopt::t_complex>> &Psi, const t_uint channel_number, const bool use_weights)
     : params(params), stats(read_params_to_stats(params)), uv_data(uv_data), out_diagnostic(stream),
-    padmm(padmm), c_start(std::clock()), Psi(Psi), measurements(measurements), channel_number(std::to_string(channel_number)){
-      auto degrid = [&measurements, &uv_data](const Vector<t_complex> & x) -> Vector<t_complex> {
+    padmm(padmm), c_start(std::clock()), Psi(Psi), measurements(measurements), channel_number(std::to_string(channel_number)), weights(std::make_shared<Vector<t_complex> >(Vector<t_complex>::Constant(uv_data.weights.size(), 1))){
+      if (use_weights){
+      weights = std::make_shared<Vector<t_complex> >(uv_data.weights);
+      auto degrid = [&](const Vector<t_complex> & x) -> Vector<t_complex> {
         const Image<t_complex> image = Image<t_complex>::Map(x.data(), measurements.imsizey(), measurements.imsizex());
-        return measurements.degrid(image).array() * uv_data.weights.array();
+        return measurements.degrid(image).array() * weights->array();
       };
-      auto grid = [&measurements, &uv_data](const Vector<t_complex> & x) -> Vector<t_complex> {
-        const Image<t_complex> image = measurements.grid(x.array() * uv_data.weights.array());
+      auto grid = [&](const Vector<t_complex> & x) -> Vector<t_complex> {
+        const Image<t_complex> image = measurements.grid(x.array() * weights->array());
         return Image<t_complex>::Map(image.data(), image.size(), 1);
       };
       std::function<Vector<t_complex>(Vector<t_complex>)> direct = degrid;
       std::function<Vector<t_complex>(Vector<t_complex>)> indirect = grid;
       dynamic_range_norm = std::sqrt(utilities::power_method(direct, indirect, measurements.imsizex() * measurements.imsizey(), 100));
+      }
     };
 
   bool AlgorithmUpdate::operator()(const Vector<t_complex> &x) {
@@ -29,7 +32,7 @@ namespace purify {
       // Getting things ready for l1 and l2 norm calculation
       Image<t_complex> const image = Image<t_complex>::Map(x.data(), params.height, params.width);
       Vector<t_complex> const y_residual
-        = ((uv_data.vis - measurements.degrid(image)).array() * uv_data.weights.array().real());
+        = ((uv_data.vis - measurements.degrid(image)).array() * weights->array());
       stats.l2_norm = y_residual.stableNorm();
       Vector<t_complex> const alpha = Psi.adjoint() * x;
       // updating parameter
@@ -42,7 +45,7 @@ namespace purify {
         std::string const residual_fits
           = params.name + "_residual_" + params.weighting + "_update_" + channel_number;
 
-        auto const residual = measurements.grid(y_residual.array() * uv_data.weights.array());
+        auto const residual = measurements.grid(y_residual.array() * weights->array());
         AlgorithmUpdate::save_figure(x, outfile_fits, "JY/PIXEL", 1);
         AlgorithmUpdate::save_figure(Image<t_complex>::Map(residual.data(), residual.size(), 1),
             residual_fits, "JY/PIXEL", 1);
