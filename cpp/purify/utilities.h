@@ -127,7 +127,7 @@ namespace purify {
     t_real power_method(std::function<Vector<t_complex>(Vector<t_complex>)> & direct,
         std::function<Vector<t_complex>(Vector<t_complex>)> & adjoint,
         const t_int cols,
-        const t_int niters = 100, const t_real relative_difference = 1e-8, const t_real norm = 1);
+        const t_int niters = 100, const t_real relative_difference = 1e-8);
   }
 }
 

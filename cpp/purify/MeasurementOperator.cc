@@ -198,7 +198,7 @@ t_real MeasurementOperator::power_method(const t_int &niters, const t_real &rela
   std::function<Vector<t_complex>(Vector<t_complex>)> direct = degrid;
   std::function<Vector<t_complex>(Vector<t_complex>)> indirect = grid;
   return utilities::power_method(direct, indirect,
-      imsizex_ * imsizey_, niters, relative_difference, norm);
+      imsizex_ * imsizey_, niters, relative_difference);
 }
 MeasurementOperator::MeasurementOperator(
     const utilities::vis_params &uv_vis_input, const t_int &Ju, const t_int &Jv,
@@ -451,10 +451,7 @@ void MeasurementOperator::init_operator(const utilities::vis_params &uv_vis_inpu
   auto A = MeasurementOperator::init_primary_beam(primary_beam_, cell_x_, cell_y_);
   S = S * A;
   PURIFY_DEBUG("Doing power method: eta_{i+1}x_{i + 1} = Psi^T Psi x_i");
-  norm = MeasurementOperator::grid(Vector<t_complex>::Constant(uv_vis.u.size(), 1.))
-    .real()
-    .maxCoeff();
-  norm *= std::sqrt(MeasurementOperator::power_method(norm_iterations_));
+  norm = std::sqrt(MeasurementOperator::power_method(norm_iterations_));
   PURIFY_DEBUG("Found a norm of eta = {}", norm);
   PURIFY_HIGH_LOG("Gridding Operator Constructed: WGFSA");
 }

@@ -682,9 +682,9 @@ Matrix<t_complex> re_sample_image(const Matrix<t_complex> &input, const t_real &
     t_real power_method(std::function<Vector<t_complex>(Vector<t_complex>)> & direct,
         std::function<Vector<t_complex>(Vector<t_complex>)> & adjoint,
         const t_int cols,
-        const t_int niters, const t_real relative_difference, const t_real norm){
+        const t_int niters, const t_real relative_difference){
       //estiamtes the norm of a linear operator given the adjoint and direct transform
-      t_real estimate_eigen_value = norm;
+      t_real estimate_eigen_value = 1;
       t_real old_value = 0;
       Vector<t_complex> estimate_eigen_vector = Vector<t_complex>::Random(cols);
       estimate_eigen_vector = estimate_eigen_vector / estimate_eigen_vector.matrix().norm();
