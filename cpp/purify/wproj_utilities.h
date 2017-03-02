@@ -2,17 +2,20 @@
 #define PURIFY_wproj_utilities_H
 
 #include "purify/config.h"
+#include "purify/logging.h"
 #include <fstream>
 #include <iostream>
 #include <random>
 #include <stdio.h>
 #include <string>
 #include <sys/stat.h>
+#include "purify/MeasurementOperator.h"
 #include "purify/FFTOperator.h"
 #include "purify/utilities.h"
 #include "purify/types.h"
 #include <time.h>
 #include <omp.h>
+#include <Eigen/Sparse>
 
 namespace purify {
   namespace wproj_utilities {

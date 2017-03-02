@@ -1,13 +1,4 @@
-#include "purify/config.h"
-#include "purify/logging.h"
-#include "purify/utilities.h"
 #include "purify/wproj_utilities.h"
-#include "purify/MeasurementOperator.h"
-#include "purify/FFTOperator.h"
-#include <Eigen/Sparse>
-#include <time.h>
-#include <omp.h>
-#include <Unsupported/Eigen/SparseExtra>
 
 #define EIGEN_DONT_PARALLELIZE
 #define EIGEN_NO_AUTOMATIC_RESIZING
