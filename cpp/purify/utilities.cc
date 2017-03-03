@@ -679,20 +679,19 @@ Matrix<t_complex> re_sample_image(const Matrix<t_complex> &input, const t_real &
   auto const output = fftop.inverse(new_ft_grid) * re_sample_ratio * re_sample_ratio;
   return output;
 }
-    t_real power_method(std::function<Vector<t_complex>(Vector<t_complex>)> & direct,
-        std::function<Vector<t_complex>(Vector<t_complex>)> & adjoint,
-        const t_int cols,
+    t_real power_method(const sopt::LinearTransform<sopt::Vector<sopt::t_complex>> &op_transform,
+        const t_int vector_size,
         const t_int niters, const t_real relative_difference){
       //estiamtes the norm of a linear operator given the adjoint and direct transform
       t_real estimate_eigen_value = 1;
       t_real old_value = 0;
-      Vector<t_complex> estimate_eigen_vector = Vector<t_complex>::Random(cols);
+      Vector<t_complex> estimate_eigen_vector = Vector<t_complex>::Random(vector_size);
       estimate_eigen_vector = estimate_eigen_vector / estimate_eigen_vector.matrix().norm();
       PURIFY_DEBUG("Starting power method");
       PURIFY_DEBUG("Iteration: 0, norm = {}", estimate_eigen_value);
       for(t_int i = 0; i < niters; ++i) {
         auto new_estimate_eigen_vector
-          = adjoint(direct(estimate_eigen_vector));
+          = op_transform.adjoint() * (op_transform * estimate_eigen_vector );
         estimate_eigen_value = new_estimate_eigen_vector.matrix().norm();
         estimate_eigen_vector = new_estimate_eigen_vector / estimate_eigen_value;
         PURIFY_DEBUG("Iteration: {}, norm = {}", i + 1, estimate_eigen_value);

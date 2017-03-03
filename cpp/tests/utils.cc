@@ -1,6 +1,6 @@
 #include "catch.hpp"
 #include "purify/utilities.h"
-
+#include "purify/MeasurementOperator.h"
 #include "purify/FFTOperator.h"
 
 #include "purify/directories.h"
@@ -594,4 +594,14 @@ TEST_CASE("utilities [resample]", "[resample]") {
   Matrix<t_complex> const image_resample_alt = utilities::re_sample_image(image, 4.);
   CHECK(image_resample.isApprox(image_resample_alt, 1e-13));
   CHECK(image_resample(0) == image_resample_alt(0));
+}
+
+TEST_CASE("Power method"){
+//Testing power method on Measurement Operator
+  t_int M = 1000;
+  utilities::vis_params uv_data = utilities::random_sample_density(M, 0., purify::constant::pi / 3.);
+  uv_data.units = "pixels";
+  auto measure_op = MeasurementOperator(uv_data, 6, 6, "kb", 128, 128, 200, 2, 1, 1, "none", false);
+  const t_real op_norm = std::sqrt(utilities::power_method(measure_op.linear_transform(), 128 * 128, 200));
+  CHECK(std::abs(op_norm - 1) < 1e-4);
 }

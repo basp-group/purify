@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include "purify/FFTOperator.h"
 #include "purify/types.h"
+#include <sopt/linear_transform.h>
 
 namespace purify {
 
@@ -124,9 +125,8 @@ namespace purify {
     //! resamples image size
     Matrix<t_complex> re_sample_image(const Matrix<t_complex> &input, const t_real &re_sample_ratio);
     //! Power method given adjoint and direct operator functions
-    t_real power_method(std::function<Vector<t_complex>(Vector<t_complex>)> & direct,
-        std::function<Vector<t_complex>(Vector<t_complex>)> & adjoint,
-        const t_int cols,
+    t_real power_method(
+        const sopt::LinearTransform<sopt::Vector<sopt::t_complex>> &op_transform, const t_int vector_size,
         const t_int niters = 100, const t_real relative_difference = 1e-8);
   }
 }

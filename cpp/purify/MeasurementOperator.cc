@@ -187,18 +187,7 @@ t_real MeasurementOperator::power_method(const t_int &niters, const t_real &rela
     niters:: max number of iterations
     relative_difference:: percentage difference at which eigen value has converged
   */
-  auto degrid = [&](const Vector<t_complex> & x) -> Vector<t_complex> {
-    auto const image = Image<t_complex>::Map(x.data(), imsizey_, imsizex_);
-    return MeasurementOperator::degrid(image);
-  };
-  auto grid = [&](const Vector<t_complex> & x) -> Vector<t_complex> {
-    const Image<t_complex> image = MeasurementOperator::grid(x);
-    return Image<t_complex>::Map(image.data(), imsizey_ * imsizex_, 1);
-  };
-  std::function<Vector<t_complex>(Vector<t_complex>)> direct = degrid;
-  std::function<Vector<t_complex>(Vector<t_complex>)> indirect = grid;
-  return utilities::power_method(direct, indirect,
-      imsizex_ * imsizey_, niters, relative_difference);
+  return utilities::power_method(MeasurementOperator::linear_transform(), imsizex_ * imsizey_, niters, relative_difference);
 }
 MeasurementOperator::MeasurementOperator(
     const utilities::vis_params &uv_vis_input, const t_int &Ju, const t_int &Jv,
@@ -252,6 +241,7 @@ void MeasurementOperator::init_operator(const utilities::vis_params &uv_vis_inpu
   // construction of linear operators in measurement operator, GFZSA
   ftsizeu_ = floor(imsizex_ * oversample_factor_);
   ftsizev_ = floor(imsizey_ * oversample_factor_);
+  nvis = uv_vis_input.vis.size();
   if (fftoperator_ == NULL){
     fftoperator_ = std::make_shared<FFTOperator>();
     if (fftw_plan_flag_ == "measure"){
@@ -457,7 +447,7 @@ void MeasurementOperator::init_operator(const utilities::vis_params &uv_vis_inpu
 }
 
 sopt::LinearTransform<sopt::Vector<sopt::t_complex>>
-linear_transform(MeasurementOperator const &measurements, t_uint nvis) {
+linear_transform(MeasurementOperator const &measurements, const t_int number_of_vis) {
   auto const height = measurements.imsizey();
   auto const width = measurements.imsizex();
   auto direct = [&measurements, width, height](Vector<t_complex> &out, Vector<t_complex> const &x) {
@@ -467,11 +457,19 @@ linear_transform(MeasurementOperator const &measurements, t_uint nvis) {
   };
   auto adjoint
     = [&measurements, width, height](Vector<t_complex> &out, Vector<t_complex> const &x) {
-      auto image = Image<t_complex>::Map(out.data(), height, width);
-      image = measurements.grid(x);
+      auto const image = measurements.grid(x);
+      out = Image<t_complex>::Map(image.data(), height * width, 1);
     };
-  return sopt::linear_transform<Vector<t_complex>>(direct, {{0, 1, static_cast<t_int>(nvis)}},
+  return sopt::linear_transform<Vector<t_complex>>(direct, {{0, 1, static_cast<t_int>(number_of_vis)}},
       adjoint,
       {{0, 1, static_cast<t_int>(width * height)}});
+}
+
+sopt::LinearTransform<sopt::Vector<sopt::t_complex>>
+MeasurementOperator::linear_transform() {
+  auto const height = imsizey_;
+  auto const width = imsizex_;
+  auto & op = *this;
+  return purify::linear_transform(op, nvis);
 }
 }

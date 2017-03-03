@@ -23,7 +23,7 @@ public:
   Image<t_complex> C;
   t_real norm = 1;
   t_real resample_factor = 1;
-
+  t_uint nvis = 1;
   MeasurementOperator();
   MeasurementOperator(const utilities::vis_params &uv_vis_input, const t_int &Ju, const t_int &Jv,
                       const std::string &kernel_name, const t_int &imsizex, const t_int &imsizey,
@@ -118,12 +118,14 @@ public:
   void init_operator(const utilities::vis_params &uv_vis_input);
 
 public:
-  //! Estiamtes norm of operator
+  //! Return the norm of the operator using the power method
   t_real power_method(const t_int &niters, const t_real &relative_difference = 1e-9);
+  //! Return a linear transform of the operator
+  sopt::LinearTransform<sopt::Vector<sopt::t_complex>> linear_transform();
 };
 
 //! Helper function to create a linear transform from a measurement operator
 sopt::LinearTransform<sopt::Vector<sopt::t_complex>>
-linear_transform(MeasurementOperator const &measurements, t_uint nvis);
+linear_transform(MeasurementOperator const &measurements, const t_int number_of_vis);
 }
 #endif

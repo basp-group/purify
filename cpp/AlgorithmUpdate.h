@@ -7,6 +7,7 @@
 #include <sopt/utilities.h>
 #include <sopt/wavelets.h>
 #include <sopt/wavelets/sara.h>
+#include <sopt/linear_transform.h>
 #include "cmdl.h"
 #include "purify/MeasurementOperator.h"
 #include "purify/pfitsio.h"

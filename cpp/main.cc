@@ -170,7 +170,7 @@ namespace {
     for (int i = 0; i < x.size(); i++) {
       Image<t_complex> const residual = measurements
         .grid(((uv_data.vis - measurements.degrid(x[i])).array()
-              * uv_data.weights.array().real())
+              * uv_data.weights.array().real() * uv_data.weights.array().real())
             .matrix()).array();
       residuals_real.push_back(residual.real());
       if(params.stokes_val == purify::casa::MeasurementSet::ChannelWrapper::polarization::P)
