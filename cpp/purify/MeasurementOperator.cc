@@ -467,8 +467,6 @@ linear_transform(MeasurementOperator const &measurements, const t_int number_of_
 
 sopt::LinearTransform<sopt::Vector<sopt::t_complex>>
 MeasurementOperator::linear_transform() {
-  auto const height = imsizey_;
-  auto const width = imsizex_;
   auto & op = *this;
   return purify::linear_transform(op, nvis);
 }
