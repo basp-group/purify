@@ -525,15 +525,11 @@ t_real median(const Vector<t_real> &input) {
 t_real dynamic_range(const Image<t_complex> &model, const Image<t_complex> &residuals,
                      const t_real &operator_norm) {
   /*
-  Returns value of noise rms given a measurement vector and signal to noise ratio
-  y0:: complex valued vector before noise added
-  SNR:: signal to noise ratio
-
-  This calculation follows Carrillo et al. (2014), PURIFY a new approach to radio interferometric
-  imaging
+    Returns the dynamic range given a model image, residuals,
+    and the norm of the measurement operator.
   */
-  return std::sqrt(model.size()) * (operator_norm * operator_norm) / residuals.matrix().norm()
-         * model.cwiseAbs().maxCoeff();
+  return std::sqrt(residuals.size()) * model.real().maxCoeff()
+    * (operator_norm * operator_norm) / residuals.matrix().real().norm();
 }
 
 Array<t_complex> init_weights(const Vector<t_real> &u, const Vector<t_real> &v,

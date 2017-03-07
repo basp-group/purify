@@ -8,24 +8,24 @@ namespace purify {
       std::ostream &stream, const MeasurementOperator &measurements,
       const sopt::LinearTransform<sopt::Vector<sopt::t_complex>> &Psi, const t_uint channel_number, const bool use_weights)
     : params(params), stats(read_params_to_stats(params)), uv_data(uv_data), out_diagnostic(stream),
-    padmm(padmm), c_start(std::clock()), Psi(Psi), measurements(measurements), channel_number(std::to_string(channel_number)), weights(std::make_shared<Vector<t_complex> >(Vector<t_complex>::Constant(uv_data.weights.size(), 1))){
+    padmm(padmm), c_start(std::clock()), Psi(Psi), measurements(measurements), channel_number(std::to_string(channel_number)), 
+    weights(std::make_shared<Vector<t_complex> >(Vector<t_complex>::Constant(uv_data.weights.size(), 1))){
       if (use_weights){
-      weights = std::make_shared<Vector<t_complex> >(uv_data.weights);
-      auto const height = measurements.imsizey();
-      auto const width = measurements.imsizex();
-      auto direct = [&](Vector<t_complex> &out, Vector<t_complex> const &x) {
-        assert(x.size() == width * height);
-        auto const image = Image<t_complex>::Map(x.data(), height, width);
-        out = measurements.degrid(image).array() * weights->array();
-      };
-  auto adjoint
-    = [&](Vector<t_complex> &out, Vector<t_complex> const &x) {
-      auto image = Image<t_complex>::Map(out.data(), height, width);
-      image = measurements.grid(x.array() * weights->array());
-    };
-      auto op = sopt::LinearTransform<sopt::Vector<sopt::t_complex>>({direct, {{0, 1, static_cast<t_int>(weights->size())}},
+        weights = std::make_shared<Vector<t_complex> >(uv_data.weights);
+        auto const height = measurements.imsizey();
+        auto const width = measurements.imsizex();
+        auto direct = [&](Vector<t_complex> &out, Vector<t_complex> const &x) {
+          assert(x.size() == width * height);
+          auto const image = Image<t_complex>::Map(x.data(), height, width);
+          out = measurements.degrid(image).array() * weights->array();
+        };
+        auto adjoint = [&](Vector<t_complex> &out, Vector<t_complex> const &x) {
+          auto image = Image<t_complex>::Map(out.data(), height, width);
+          image = measurements.grid(x.array() * weights->array());
+        };
+        auto op = sopt::LinearTransform<sopt::Vector<sopt::t_complex>>({direct, {{0, 1, static_cast<t_int>(weights->size())}},
             adjoint, {{0, 1, static_cast<t_int>(measurements.imsizey() * measurements.imsizex())}}});
-      dynamic_range_norm = std::sqrt(utilities::power_method(op, measurements.imsizex() * measurements.imsizey(), 100));
+        dynamic_range_norm = std::sqrt(utilities::power_method(op, measurements.imsizex() * measurements.imsizey(), 100));
       }
     };
 
@@ -36,7 +36,7 @@ namespace purify {
       // Getting things ready for l1 and l2 norm calculation
       Image<t_complex> const image = Image<t_complex>::Map(x.data(), params.height, params.width);
       Vector<t_complex> const y_residual
-        = ((uv_data.vis - measurements.degrid(image)).array() * weights->array());
+        = (uv_data.vis - measurements.degrid(image)).array() * weights->array();
       stats.l2_norm = y_residual.stableNorm();
       Vector<t_complex> const alpha = Psi.adjoint() * x;
       // updating parameter
