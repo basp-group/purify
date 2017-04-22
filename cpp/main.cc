@@ -115,7 +115,7 @@ namespace {
     purify::pfitsio::header_params header = create_new_header(uv_data, params);
     std::string const dirty_image_fits = params.name + "_dirty_" + params.weighting;
     std::string const psf_fits = params.name + "_psf_" + params.weighting;
-    Vector<t_complex> const psf_image = measurements.adjoint() * (uv_data.weights.array());
+    Vector<t_complex> const psf_image = measurements.adjoint() * (uv_data.weights.array() * uv_data.weights.array());
     Image<t_real> psf = Image<t_complex>::Map(psf_image.data(), params.height, params.width).real();
     t_real max_val = psf.array().abs().maxCoeff();
     PURIFY_LOW_LOG("PSF peak is {}", max_val);
@@ -125,7 +125,7 @@ namespace {
     psf_cube.push_back(psf);
     pfitsio::write3d_header(psf_cube, header);
     Vector<t_complex> const dirty_image
-      = measurements.adjoint() * (uv_data.weights.array() * uv_data.vis.array());
+      = measurements.adjoint() * (uv_data.weights.array() * uv_data.weights.array() * uv_data.vis.array());
     Image<t_complex> dimage
       = Image<t_complex>::Map(dirty_image.data(), params.height, params.width);
     dirty_cube.push_back(dimage.real());
@@ -142,10 +142,10 @@ namespace {
   }
 
   void save_final_image(std::string const &outfile_fits, std::string const &residual_fits,
-      std::vector<Image<t_complex>> const &x, utilities::vis_params const &uv_data,
+      std::vector<Image<t_complex>> const &x, std::vector<utilities::vis_params> const &uv_data,
       Params const &params, const MeasurementOperator & measurements) {
     //! Save final output image
-    purify::pfitsio::header_params header = create_new_header(uv_data, params);
+    purify::pfitsio::header_params header = create_new_header(uv_data[0], params);
     // header information
     header.pix_units = "JY/PIXEL";
     header.niters = params.iter;
@@ -169,8 +169,8 @@ namespace {
     std::vector<Image<t_real>> residuals_imag;
     for (int i = 0; i < x.size(); i++) {
       Image<t_complex> const residual = measurements
-        .grid(((uv_data.vis - measurements.degrid(x[i])).array()
-              * uv_data.weights.array().real() * uv_data.weights.array().real())
+        .grid(((uv_data[i].vis - measurements.degrid(x[i])).array()
+              * uv_data[i].weights.array().real() * uv_data[i].weights.array().real())
             .matrix()).array();
       residuals_real.push_back(residual.real());
       if(params.stokes_val == purify::casa::MeasurementSet::ChannelWrapper::polarization::P)
@@ -386,7 +386,7 @@ int main(int argc, char **argv) {
     }
     images.push_back(Image<t_complex>::Map(final_model.data(), measurements.imsizey(), measurements.imsizex()));
     PURIFY_HIGH_LOG("Saving Plane {}...", channel_number + 1);
-    save_final_image(outfile_fits, residual_fits, images, uv_data, params, measurements);
+    save_final_image(outfile_fits, residual_fits, images, uv_data_channels, params, measurements);
     if (params.run_diagnostic)
       out_diagnostic.close();
     PURIFY_HIGH_LOG("Plane {} finished!", channel_number + 1);

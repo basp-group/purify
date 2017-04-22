@@ -24,7 +24,6 @@
 #include "purify/types.h"
 #include "purify/utilities.h"
 #include "purify/wproj_utilities.h"
-#include <Unsupported/Eigen/SparseExtra>
 
 #include <assert.h>
        
