@@ -33,45 +33,45 @@
  
 int main( int nargs, char const** args ){
   std::cout<<nargs;
-  if(nargs != 11) {
+  if(nargs != 7) {
     std::cerr << "Wrong number of arguments! " << '\n';
     return 1;
   }
 
   using namespace purify;
   using namespace purify::notinstalled;
+ 
   sopt::logging::initialize();
   purify::logging::initialize();
   sopt::logging::set_level("debug");
   purify::logging::set_level("debug");
-
   const t_real pi = constant::pi;
   const t_real C = constant::c;
   const t_real  arcsec2rad = pi / (180 * 60 *60) ; //factor of conversion from arcsec to radian
 
 
   /* reading entries */
+  std::cout<<"I AM HERE \n";
   const std::string inSkyName = args[1];
+  
   const std::string inVisName = args[2];
+  
   const t_real energyG = std::stod(static_cast<std::string>(args[3]));
+  std::cout<<"I moved HERE3 \n";
   const t_real energyC = std::stod(static_cast<std::string>(args[4]));
+  std::cout<<"I moved HERE4 \n";
   const std::string outputdir = args[5];
-  t_real iSNR =  std::stod(static_cast<std::string>(args[6]));
-  t_real iWFRAC = std::stod(static_cast<std::string>(args[7]));
-  const std::string wfrac = args[7];
-  const t_int runs = std::stod(args[8]);
-  t_real resolution = std::stod(args[9]); 
-  const t_real freq0 = std::stod(args[10]); 
+  std::cout<<"I moved HERE5 \n";
+  const t_int runs = std::stod(args[6]);
+  std::cout<<"I moved HERE6 \n";
+  const t_real freq0 = 1E9; 
 
   std::cout<< "**---------------------------------------------------------------------------**\n";
   std::cout<< "  This is an example of RI imaging: Super-resolution in presence of w-term\n";
   std::cout<< "  Sky Model image: "<<inSkyName<<"\n";
   std::cout<< "  UVW coverage: "<<inVisName<<"\n";
   std::cout<< "  Sparsity on G: "<<energyG <<"\n";
-  std::cout<< "  Random w-terms; w_f: " << wfrac <<"\n";
   std::cout<< "  Nber of runs: " << runs <<"\n";
-  std::cout<< "  UV down-scaling factor: " << resolution <<"\n";
-  std::cout<< "  iSNR: " << iSNR <<"\n";
   std::cout<< "  Results saved in : "<<outputdir<<"\n";
   std::cout<< "**---------------------------------------------------------------------------**\n";
 
@@ -87,17 +87,19 @@ int main( int nargs, char const** args ){
   bool correct_w_term = true; // correct for w
   utilities::vis_params uv_data;
   t_int norm_iterations =10;
-
+  t_real resolution = 1; 
+  std::cout<<"I moved HERE1 \n";
   /*Output files & vars*/
   Vector<t_real> SNR(runs);
   Vector<t_real> MR(runs);
   Vector<t_real> solverTime(runs); 
 
   /* Read sky model image & dimensions*/
-  PURIFY_INFO("Reading image and any available data!");
+  std::cout<<"Reading image and any available data!\n";
   const std::string  fitsfile = image_filename(inSkyName);
   const std::string  vis_file =  inVisName;//image_filename("coverages/" + inVisName);
   Image<t_complex> ground_truth = pfitsio::read2d(fitsfile);
+  std::cout<<"I moved HERE2 \n";
   t_real const ground_truth_peak = ground_truth.array().abs().maxCoeff();
   ground_truth = ground_truth / ground_truth_peak;
   t_int heightOr = ground_truth.rows();
@@ -105,8 +107,8 @@ int main( int nargs, char const** args ){
   t_int finalszx = widthOr*overSample;
   t_int finalszy = heightOr*overSample;
   
-  PURIFY_HIGH_LOG("Original test image  is normalized to 1!");
-  PURIFY_INFO("Original test image is of size {}  x  {} pixels",heightOr,widthOr);
+  std::cout<<"\nOriginal test image  is normalized to 1!";
+  std::cout<<"\nOriginal test image is of size " <<heightOr<<"::"<<widthOr<<"\n";
 
   for (t_int cmt = runs-1; cmt < runs; ++cmt) {
       /* Read visibilities or  uvw coverages from  files */
@@ -117,7 +119,7 @@ int main( int nargs, char const** args ){
       PURIFY_INFO("Number of measurements: {}",u.size());
       t_real maxBaseline = lambda *(((u.array() * u.array() + v.array() * v.array() + w.array() * w.array()).sqrt()).maxCoeff()) ;
       t_real maxProjectedBaseline = lambda *(((u.array() * u.array() + v.array() * v.array()).sqrt()).maxCoeff()) ;
-      t_real thetaResolution = 1.22* lambda / (maxProjectedBaseline) ;
+      t_real thetaResolution = 1.* lambda / (maxProjectedBaseline) ;
       t_real cell_x = (thetaResolution / arcsec2rad ) / 2;  // Nyquist sampling
       t_real cell_y = cell_x;
       // FoV on L & M axis 
@@ -144,12 +146,12 @@ int main( int nargs, char const** args ){
       MeasurementOperator SimMeasurements(uv_data, kernelSizeU, kernelSizeV,kernel_name, 
                       widthOr, heightOr,norm_iterations,overSample,cell_x, cell_y, weighting_type,
                       RobustW, false, energy_fraction_chirp,energy_fraction_wproj,"none",false); // Create Measurement Operator
-      t_real sigma =1;
-      t_real mean =0;
+      t_real sigma = 10;
+      t_real mean = 0;
     
       Sparse<t_complex> vect  = wproj_utilities::generate_vect(finalszx,finalszy,sigma,mean);
       Eigen::saveMarket(vect.transpose(),"./outputs/vect.txt");
-      for (t_int m=1; m<SimMeasurements.G.outerSize() ;m++){
+      for (t_int m = 1; m<SimMeasurements.G.outerSize() ;m++){
       PURIFY_DEBUG("CURRENT WPROJ - Kernel index [{}]",m);
 
       Eigen::SparseVector<t_complex> G_bis = SimMeasurements.G.row(m);

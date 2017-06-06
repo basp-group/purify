@@ -38,8 +38,8 @@ int main( int nargs, char const** args ){
   /* Inputs of the program */
   const std::string inSkyName = args[1];
   const std::string inVisName = args[2];
-  const t_real energy_fraction_chirp = std::stod(static_cast<std::string>(args[4]));
-  const std::string egFile = args[3];
+  const t_real energy_fraction_wproj = std::stod(static_cast<std::string>(args[3]));
+  const std::string esFile = args[4];
   const std::string outputdir = args[5];
   t_real iSNR =  std::stod(static_cast<std::string>(args[6]));
   t_real iWFRAC = std::stod(static_cast<std::string>(args[7]));
@@ -48,19 +48,30 @@ int main( int nargs, char const** args ){
   t_real resolution = std::stod(args[9]); 
   const t_real freq0 = std::stod(args[10]); 
 
-  t_real energy_fraction_wproj = 0.999999;
+  t_real energy_fraction_chirp = 0.999999;
   const t_real pi = constant::pi;
   const t_real C = constant::c;
   const t_real  arcsec2rad = pi / (180 * 60 *60) ; //factor of conversion from arcsec to radian
   const t_int norm_iterations =100;
+
+  // const std::string esFile = args[4];
+
+  // const std::string outputdir=args[5];
+  // t_real inputSNR=atoi(args[6]); 
+  // t_real iWFRAC=std::stod(args[7]);
+  // const std::string wfrac =args[7];
+
+  // t_real inputFOV=std::stod(args[9]);//NOT USED AT THE MOMENT
+  // const t_int runs=std::stod(args[8]);
+  
 
 
   std::cout<< "**--------------------------------------------------------------**\n";
   std::cout<< "      This is an example RI imaging with w correction: Study of C sparsity\n";
   std::cout<< "      Sky Model image: "<<inSkyName<<"\n";
   std::cout<< "      UVW coverage: "<<inVisName<<"\n";
-  std::cout<< "      Sparsity on G "<<energy_fraction_chirp <<"\n";
-  std::cout<< "      Sparsity on C " << egFile <<"\n";
+  std::cout<< "      Sparsity on G "<<energy_fraction_wproj <<"\n";
+  std::cout<< "      Sparsity on C " << esFile <<"\n";
   std::cout<< "      RANDOM w terms -- WFRAC " << wfrac <<"\n";
   std::cout<< "      SNR on the data " << iSNR <<"\n";
   std::cout<< "      Results saved in : "<<outputdir<<"\n";
@@ -88,16 +99,14 @@ int main( int nargs, char const** args ){
 
   std::vector<t_real> cList;  
   std::string line;
-  std::ifstream clevel (egFile);
+  std::ifstream splevel (esFile);
   t_real val;
-  if (clevel.is_open())
-  {
-    while ( std::getline(clevel,line) )
-    {
+  if (splevel.is_open()){
+    while ( std::getline(splevel,line) ){
       val = std::stod(line);
       cList.push_back(val);
     }
-    clevel.close();
+    splevel.close();
     nbLevelC =cList.size();
   }
   
@@ -116,8 +125,8 @@ int main( int nargs, char const** args ){
   skyOr = skyOr / maxsky;
   t_int heightOr = skyOr.rows();
   t_int widthOr = skyOr.cols();
-  std::cout<< "\n"<<  "Original test image  of size " << heightOr<< " x "<<widthOr<< " pixels.";
-  std::cout<<  "INFO: Original test image  is normalized to 1";
+  std::cout<< "\nTest image of size " << heightOr<< " x "<<widthOr<< " pixels.";
+  std::cout<<  "\nTest image peaked to 1";
 
   /* Read visibilities or  uvw coverages from  files */
   bool read_w = true; // read w from uv coverage
@@ -128,7 +137,7 @@ int main( int nargs, char const** args ){
 
   t_real maxBaseline = lambda *(((u.array() * u.array() + v.array() * v.array() + w.array() * w.array()).sqrt()).maxCoeff()) ;
   t_real maxProjectedBaseline = lambda *(((u.array() * u.array() + v.array() * v.array()).sqrt()).maxCoeff()) ;
-  t_real thetaResolution = 1.22* lambda / maxProjectedBaseline ;
+  t_real thetaResolution = 1.* lambda / maxProjectedBaseline ;
   t_real cellsize = (t_real)(thetaResolution / arcsec2rad ) / 2;  // Nyquist sampling
 
   // FoV on L & M axis 
@@ -142,10 +151,10 @@ int main( int nargs, char const** args ){
   const t_real M = 2 * std::sin(theta_FoV_M * 0.5);
   const t_real wlimit = widthOr / (L * M); 
   t_real w_max = (uv_data.w.cwiseAbs()).maxCoeff();
-  std::cout <<"\nINFO: original w_max " << w_max <<", limits on w: wrt FoV & Npix " << wlimit << ", wrt b_max " << maxBaseline /lambda ;  
+  std::cout <<"\nOriginal w_max " << w_max <<", limits on w: wrt FoV & Npix " << wlimit << ", wrt b_max " << maxBaseline /lambda ;  
 
   if (iWFRAC >0){
-    std::cout<< "\nGenerating random w component.. ";
+    std::cout<< "\nGenerating uniformly distributed w-values.. ";
       std::random_device rand;
       std::mt19937 gen(1);
       std::uniform_real_distribution<t_real> dist(-1, 1);
@@ -156,11 +165,10 @@ int main( int nargs, char const** args ){
       w_max = (uv_data.w.cwiseAbs()).maxCoeff();
   } 
   else{
-    if (iWFRAC==-1)   std::cout << "\nINFO: Keeping  original w components ";
+    if (iWFRAC==-1)   std::cout << "\nKeeping  original w-values ";
   }
        
-  std::cout <<"  wmax/wlimit = " << w_max/wlimit <<", wfrac:" << iWFRAC <<".\n" ;
-   fflush(stdout); 
+  std::cout <<"\nwmax/wlimit = " << w_max/wlimit <<", wfrac:" << iWFRAC <<".\n" ;  fflush(stdout); 
   /* Upsampling in Fourier due to w component - image size setting - keep even size for now */
   t_int multipleof =pow(2,wavelet_level)/overSample;   // size should be multiple of 2^level (level of DB wavelets)
   t_real upsampleRatio = wproj_utilities::upsample_ratio_sim(uv_data, L, M, widthOr, heightOr, multipleof);
@@ -174,7 +182,7 @@ int main( int nargs, char const** args ){
     std::cout <<  "\nUpsampling: cellsize " << cellsize <<  "arcsec, upsampling ratio: "<< upsampleRatio << " New Image size " << heightUp<< " x "<<widthUp<< " pixels. \n";
     cellsize = cellsize/upsampleRatio; //update cellsize
   }
-  else{std::cout<<"INFO: no upsampling.\n";}
+  else{std::cout<<"\nNO upsampling.\n";}
 
   /* Measurement operator parameters */
   std::string weighting_type = "none";
@@ -241,9 +249,9 @@ int main( int nargs, char const** args ){
   
     for (t_int CMPT= 0; CMPT < cList.size(); ++CMPT){
         
-        energy_fraction_wproj = cList[CMPT];
-        std::string eg=std::to_string(CMPT);
-        PURIFY_INFO(" Thread Nb:{} Energy Fraction on Chirp: {} ",omp_get_thread_num(),energy_fraction_wproj);
+        energy_fraction_chirp = cList[CMPT];
+        std::string sp=std::to_string(CMPT);
+        PURIFY_INFO(" Thread Nb:{} Energy Fraction on Chirp: {} ",omp_get_thread_num(),energy_fraction_chirp);
 
         MeasurementOperator SimMeasurementsSP(uv_data, Ju, Jv,kernel_name, 
                       widthUp, heightUp,norm_iterations,overSample,cellsize, cellsize, weighting_type,
@@ -253,7 +261,7 @@ int main( int nargs, char const** args ){
        
         /* Reconstruction */
         Image<t_complex> skyDirty = (SimMeasurementsSP.grid(y0));
-        std::string const dirty_image_fits = output_filename(outputdir +inSkyName+".EcIdx"+eg+".C_sara_dirty.fits");  
+        std::string const dirty_image_fits = output_filename(outputdir +inSkyName+".EcIdx"+sp+".C_sara_dirty.fits");  
         pfitsio::write2d((Image<t_real>)skyDirty.real(), dirty_image_fits);
         std::cout << "\n\nStarting SOPT!\n";
        
@@ -266,15 +274,15 @@ int main( int nargs, char const** args ){
             // std::cout << "DEBUG 11!\n";  fflush(stdout);
             std::time_t startT = std::time(NULL);
             Vector<t_complex> inputData = utilities::add_noise(y0, 0., sigma);//dirty(y0, mersenne, inputSNR);//  noisy vis
-            std::string const model_fits = output_filename(outputdir +inSkyName+"G.EgIdx"+eg+"_sara_model"+std::to_string(i)+".fits");
-            std::string const residual_fits = output_filename(outputdir +inSkyName+"G.EgIdx"+eg+"_sara_residual"+std::to_string(i)+".fits");
-            std::string const dirty_fits = output_filename(outputdir +inSkyName+"G.EgIdx"+eg+"_sara_dirty"+std::to_string(i)+".fits");
+            std::string const model_fits = output_filename(outputdir +inSkyName+"C.EcIdx"+sp+"_sara_model"+std::to_string(i)+".fits");
+            std::string const residual_fits = output_filename(outputdir +inSkyName+"C.EcIdx"+sp+"_sara_residual"+std::to_string(i)+".fits");
+            std::string const dirty_fits = output_filename(outputdir +inSkyName+"C.EcIdx"+sp+"_sara_dirty"+std::to_string(i)+".fits");
 
             
             /* SOLVER: Proximal ADMM */
             #pragma omp critical (print2)
             {
-              PURIFY_INFO("RAND-W EG:{}  RUN: {} ",energy_fraction_wproj, i);
+              PURIFY_INFO("RAND-W EC:{}  RUN: {} ",energy_fraction_chirp, i);
             }
             t_real solver_beta=0.001;
             auto purify_gamma = (Psi.adjoint() * (measurements_transform_approx.adjoint() * (inputData.array()).matrix()) ).real().cwiseAbs().maxCoeff() * solver_beta;          
@@ -296,7 +304,7 @@ int main( int nargs, char const** args ){
                          .lagrange_update_scale(0.9)
                          .nu(1e0)
                          .Psi(Psi)
-       .itermax(2500)
+       .itermax(2)
        .is_converged(convergence_function)
                          .Phi(measurements_transform_approx);
 
@@ -322,7 +330,7 @@ int main( int nargs, char const** args ){
       SNR(i) = wproj_utilities::snr_metric(sky.real(),estimated_image.real());
       MR(i) = wproj_utilities::mr_metric(sky.real(),estimated_image.real());
       solverTime(i) = total_time;
-      PURIFY_HIGH_LOG("[PADMM: Thread Nbr: {} -  ChirP Energy: {} -  Run:{}] SNR:{}  &&  MR: {} && CT:{}",omp_get_thread_num(),energy_fraction_chirp,i,SNR(i),MR(i),solverTime(i));
+      PURIFY_HIGH_LOG("[PADMM: Thread Nbr: {} -  C Energy: {} -  Run:{}] SNR:{}  &&  MR: {} && CT:{}",omp_get_thread_num(),energy_fraction_chirp,i,SNR(i),MR(i),solverTime(i));
       }
   
 
@@ -330,46 +338,33 @@ int main( int nargs, char const** args ){
           
           
           //SNR
-          std::string const fileSNRLog = output_filename(outputdir+inSkyName+"W."+wfrac+"_SNR.txt");
+          std::string const fileSNRLog = output_filename(outputdir+inSkyName+"W."+wfrac+"_C_SNR.txt");
           std::ofstream SNRLog;   
           SNRLog.open(fileSNRLog, std::ios::app);
           for (t_int i = 0; i < runs; ++i){
-                SNRLog<<eg<<" "<< SNR(i) << "\n";
+                SNRLog<<sp<<" "<< SNR(i) << "\n";
           }
           SNRLog.close();
 
           //MR
-          std::string const fileMRLog = output_filename(outputdir+inSkyName+"W."+wfrac+"_MR.txt");
+          std::string const fileMRLog = output_filename(outputdir+inSkyName+"W."+wfrac+"_C_MR.txt");
           std::ofstream MRLog;   
           MRLog.open(fileMRLog, std::ios::app);
           for (t_int i = 0; i < runs; ++i){
-                MRLog<<eg<<" "<< MR(i) << "\n";
+                MRLog<<sp<<" "<< MR(i) << "\n";
           }
           MRLog.close();
         
           // Solver compt. time
-          std::string const fileSolverTLog = output_filename(outputdir+inSkyName+".W"+wfrac+"_CTime.txt");
+          std::string const fileSolverTLog = output_filename(outputdir+inSkyName+".W"+wfrac+"_C_Time.txt");
           std::ofstream CTLog;
           CTLog.open(fileSolverTLog, std::ios::app);
           for (t_int i = 0; i < runs; ++i){
-               CTLog<<eg<<" "<< solverTime(i) << "\n";  // CTLog<<<< endl;td::fixed <<std::setprecision(10)<<
+               CTLog<<sp<<" "<< solverTime(i) << "\n";  // CTLog<<<< endl;td::fixed <<std::setprecision(10)<<
           }
           CTLog.close();
         
-          // // G - sparsity
-          // std::string const fileGspLog = output_filename(outputdir+inSkyName+".W"+wfrac+"_Gsp.txt");
-          // std::ofstream GSLog;   
-          // GSLog.open(fileGspLog, std::ios::app);
-          // GSLog<<ec << " " <<sparsityG<< std::endl;
-          // GSLog.close();
-
-
-          // // C - sparsity
-          // std::string const fileCspLog = output_filename(outputdir+inSkyName+".W"+wfrac+"_Csp.txt");
-          // std::ofstream CSLog;   
-          // CSLog.open(fileCspLog, std::ios::app);
-          // CSLog<<ec << " " <<sparsityC<< std::endl;
-          // CSLog.close();
+         
       
       }
   return 0; 
