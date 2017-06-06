@@ -36,12 +36,8 @@ namespace purify {
           t_real x = (l + 0.5 - x_size * 0.5) * delt_x;
           t_real y = (m + 0.5 - y_size * 0.5) * delt_y;
           t_complex val =  (std::exp(1 * pi * I * w_rate * (x*x +y*y))) * std::exp(- 2 * pi * I * (l * 0.5 + m * 0.5))/nz;
-          if (std::abs(val)>1e-16){
-            if (std::abs(val.imag())<1e-10)
-              val =val.real()+I*0.0;
-            chirp(l,m) = val;
-          }
-          else{chirp(l,m) =0.0;}
+          
+          chirp(l,m) = val;
 
         }
       }
