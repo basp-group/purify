@@ -33,7 +33,8 @@ TEST_CASE("wprojection_matrix") {
   for (t_int k = 0; k < G.outerSize(); ++k)
     for (Sparse<t_complex>::InnerIterator it(G_id, k); it; ++it)
     {
-      CHECK(it.value() == 1.);
+      t_real val = std::abs(it.value() - 1.);
+      CHECK(val <1e-12);
       CHECK(it.row() == it.col());   // row index
     }
 }
