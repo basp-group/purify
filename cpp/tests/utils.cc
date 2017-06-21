@@ -1,6 +1,6 @@
 #include "catch.hpp"
 #include "purify/utilities.h"
-
+#include "purify/MeasurementOperator.h"
 #include "purify/FFTOperator.h"
 
 #include "purify/directories.h"
@@ -42,7 +42,8 @@ TEST_CASE("utilities [reshape]", "[reshape]") {
   CAPTURE(magic_vector);
   CHECK(magic.isApprox(magic_vector, 1e-13));
 }
-TEST_CASE("utilities [variance]", "[variance]") {
+
+TEST_CASE("variance", "utilities") {
   // tests if mean and variance calculations are the same as done in matlab
   Vector<t_complex> real_data(1000);
   Vector<t_complex> imag_data(1000);
@@ -460,7 +461,15 @@ TEST_CASE("utilities [variance]", "[variance]") {
   t_real var = utilities::variance(data);
   CAPTURE(var);
   CHECK(std::abs(var - 50.1405284663126) < 1e-13);
+  //comparing norm with rms
+  const Matrix<t_complex> random_matrix = Matrix<t_complex>::Random(1000, 1000);
+  const Vector<t_complex> random_vector = Image<t_complex>::Map(random_matrix.data(), random_matrix.size(), 1);
+  var = utilities::variance(random_vector);
+  const t_real l2norm_std = random_matrix.norm()/std::sqrt(random_matrix.size());
+  CHECK( std::abs(l2norm_std - std::sqrt(var)) < 1e-12);
+
 }
+
 TEST_CASE("utilities [median]", "[median]") {
   Vector<t_real> x(100);
   x << 0.824149356327936, 0.218232263733975, 0.0996423029616137, 0.619505816445823,
@@ -488,6 +497,7 @@ TEST_CASE("utilities [median]", "[median]") {
   t_real const median = 0.475054566552345;
   CHECK(std::abs(median - utilities::median(x)) < 1e-13);
 }
+
 TEST_CASE("utilities [read_write_vis]", "[read_write_vis]") {
   // tests the read and write function for a visibility data set
   std::string vis_file = vla_filename("at166B.3C129.c0I.vis");
@@ -511,6 +521,7 @@ TEST_CASE("utilities [read_write_vis]", "[read_write_vis]") {
   CHECK(new_random_uv_data.vis.isApprox(random_uv_data.vis, 1e-8));
   CHECK(new_random_uv_data.weights.isApprox(random_uv_data.weights, 1e-8));
 }
+
 TEST_CASE("utilities [file exists]", "[file exists]") {
   std::string vis_file = vla_filename("at166B.3C129.c0.vis");
   // File should exist
@@ -518,6 +529,7 @@ TEST_CASE("utilities [file exists]", "[file exists]") {
   // File should not exist
   CHECK(not utilities::file_exists("adfadsf"));
 }
+
 TEST_CASE("utilities [fit_fwhm]", "[fit_fwhm]") {
   // testing that the gaussian fitting works.
   t_int imsizex = 512;
@@ -594,4 +606,14 @@ TEST_CASE("utilities [resample]", "[resample]") {
   Matrix<t_complex> const image_resample_alt = utilities::re_sample_image(image, 4.);
   CHECK(image_resample.isApprox(image_resample_alt, 1e-13));
   CHECK(image_resample(0) == image_resample_alt(0));
+}
+
+TEST_CASE("Power method"){
+//Testing power method on Measurement Operator
+  t_int M = 1000;
+  utilities::vis_params uv_data = utilities::random_sample_density(M, 0., purify::constant::pi / 3.);
+  uv_data.units = "pixels";
+  auto measure_op = MeasurementOperator(uv_data, 6, 6, "kb", 128, 128, 200, 2, 1, 1, "none", false);
+  const t_real op_norm = std::sqrt(utilities::power_method(measure_op.linear_transform(), 128 * 128, 200));
+  CHECK(std::abs(op_norm - 1) < 1e-4);
 }

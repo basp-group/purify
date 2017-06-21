@@ -3,6 +3,15 @@ include(AddExample)
 include_directorieS(SYSTEM ${Sopt_INCLUDE_DIRS})
 include_directories("${PROJECT_SOURCE_DIR}/cpp")
 
+
+add_example(super_resolution_synthetic_data LIBRARIES libpurify NOTEST)
+add_example(test_conv_ar LIBRARIES libpurify NOTEST)
+add_example(w-projection_C_sparsification_test LIBRARIES libpurify NOTEST)
+add_example(w-projection_G_sparsification_test LIBRARIES libpurify NOTEST)
+
+#if(data AND TARGET casacore::ms)
+ # add_example(casa LIBRARIES libpurify)
+#endif()
 add_example(gridding LIBRARIES libpurify)
 add_example(rm_gridding_example LIBRARIES libpurify NOTEST)
 add_example(generate_vis_data LIBRARIES libpurify NOTEST)

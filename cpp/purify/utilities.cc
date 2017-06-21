@@ -37,6 +37,58 @@ random_sample_density(const t_int &vis_num, const t_real &mean, const t_real &st
   uv_vis.average_frequency = 0;
   return uv_vis;
 }
+utilities::vis_params read_uvw(const std::string &vis_name,const t_real &lambda) {
+  /*
+    Reads an csv file with u, v, w coordinates in meters and returns the vectors.
+
+    vis_name:: name of input text file containing [u, v, real(V), imag(V)] (separated by ' ').
+  */
+  std::ifstream temp_file(vis_name);
+  t_int row = 0;
+  std::string line;
+  // counts size of vis file
+  while(std::getline(temp_file, line))
+    ++row;
+  Vector<t_real> utemp = Vector<t_real>::Zero(row);
+  Vector<t_real> vtemp = Vector<t_real>::Zero(row);
+  Vector<t_real> wtemp = Vector<t_real>::Zero(row);
+  Vector<t_complex> vistemp = Vector<t_complex>::Zero(row);
+  Vector<t_complex> weightstemp = Vector<t_complex>::Zero(row);
+  std::ifstream vis_file(vis_name);
+
+  // reads in vis file
+  row = 0;
+  t_real real;
+  t_real imag;
+  std::string s;
+  std::string entry;
+  while(vis_file) {
+    if(!std::getline(vis_file, s))
+      break;
+    std::istringstream ss(s);
+    std::getline(ss, entry, ' ');
+    utemp(row) = std::stod(entry);
+    std::getline(ss, entry, ' ');
+    vtemp(row) = std::stod(entry);
+    std::getline(ss, entry, ' ');
+    wtemp(row) = std::stod(entry);
+    weightstemp(row) =1;
+
+    ++row;
+  }
+  utilities::vis_params uv_vis;
+  uv_vis.u = utemp/lambda;
+  uv_vis.v = -vtemp/lambda; // found that a reflection is needed for the orientation of the gridded image
+  uv_vis.w = wtemp/lambda;
+  uv_vis.vis = vistemp;
+  uv_vis.weights = weightstemp;
+  uv_vis.ra = 0;
+  uv_vis.dec = 0;
+  uv_vis.average_frequency = 0;
+
+  return uv_vis;
+}
+
 utilities::vis_params read_visibility(const std::string &vis_name, const bool w_term) {
   /*
     Reads an csv file with u, v, visibilities and returns the vectors.
@@ -169,8 +221,7 @@ set_cell_size(const utilities::vis_params &uv_vis, t_real cell_size_u, t_real ce
   return scaled_vis;
 }
 
-utilities::vis_params
-uv_scale(const utilities::vis_params &uv_vis, const t_int &sizex, const t_int &sizey) {
+utilities::vis_params uv_scale(const utilities::vis_params &uv_vis, const t_int &sizex, const t_int &sizey) {
   /*
     scales the uv coordinates from being in units of 2 * pi to units of pixels.
   */
@@ -474,15 +525,11 @@ t_real median(const Vector<t_real> &input) {
 t_real dynamic_range(const Image<t_complex> &model, const Image<t_complex> &residuals,
                      const t_real &operator_norm) {
   /*
-  Returns value of noise rms given a measurement vector and signal to noise ratio
-  y0:: complex valued vector before noise added
-  SNR:: signal to noise ratio
-
-  This calculation follows Carrillo et al. (2014), PURIFY a new approach to radio interferometric
-  imaging
+    Returns the dynamic range given a model image, residuals,
+    and the norm of the measurement operator.
   */
-  return std::sqrt(model.size()) * (operator_norm * operator_norm) / residuals.matrix().norm()
-         * model.cwiseAbs().maxCoeff();
+  return std::sqrt(residuals.size()) * model.real().maxCoeff()
+    * (operator_norm * operator_norm) / residuals.matrix().real().norm();
 }
 
 Array<t_complex> init_weights(const Vector<t_real> &u, const Vector<t_real> &v,
@@ -496,7 +543,7 @@ Array<t_complex> init_weights(const Vector<t_real> &u, const Vector<t_real> &v,
   Vector<t_complex> out_weights(weights.size());
   if(weighting_type == "none") {
     out_weights = weights.array() * 0 + 1;
-  } else if(weighting_type == "natural") {
+  } else if(weighting_type == "natural" or weighting_type == "whiten") {
     out_weights = weights;
   } else {
     t_real scale = 1. / oversample_factor; // scale for fov, controlling the region of sidelobe supression
@@ -628,5 +675,27 @@ Matrix<t_complex> re_sample_image(const Matrix<t_complex> &input, const t_real &
   auto const output = fftop.inverse(new_ft_grid) * re_sample_ratio * re_sample_ratio;
   return output;
 }
+    t_real power_method(const sopt::LinearTransform<sopt::Vector<sopt::t_complex>> &op_transform,
+        const t_int vector_size,
+        const t_int niters, const t_real relative_difference){
+      //estiamtes the norm of a linear operator given the adjoint and direct transform
+      t_real estimate_eigen_value = 1;
+      t_real old_value = 0;
+      Vector<t_complex> estimate_eigen_vector = Vector<t_complex>::Random(vector_size);
+      estimate_eigen_vector = estimate_eigen_vector / estimate_eigen_vector.matrix().norm();
+      PURIFY_DEBUG("Starting power method");
+      PURIFY_DEBUG("Iteration: 0, norm = {}", estimate_eigen_value);
+      for(t_int i = 0; i < niters; ++i) {
+        estimate_eigen_vector
+          = op_transform.adjoint() * (op_transform * estimate_eigen_vector );
+	estimate_eigen_value = estimate_eigen_vector.matrix().norm();
+        estimate_eigen_vector = estimate_eigen_vector / estimate_eigen_value;
+        PURIFY_DEBUG("Iteration: {}, norm = {}", i + 1, estimate_eigen_value);
+        if(relative_difference > std::abs(old_value - estimate_eigen_value) / estimate_eigen_value)
+          break;
+        old_value = estimate_eigen_value;
+      }
+      return old_value;
+    }
 }
 }

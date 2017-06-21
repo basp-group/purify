@@ -21,6 +21,9 @@ struct Params {
   std::string visfile = "";
   std::string noisefile = "";
 
+  //spectral or continuum
+  t_int channel_averaging = 0;
+  //algorithm parameters
   t_int niters = 0;
   t_real beta = 1e-3;
   // measurement operator stuff
@@ -35,14 +38,17 @@ struct Params {
   std::string primary_beam = "none";
   bool fft_grid_correction = false;
   std::string fftw_plan = "measure";
+  std::string gradient = "none";
   // w_term stuff
-  t_real energy_fraction = 1;
+  t_real energy_fraction_chirp = 0.99999;
+  t_real energy_fraction_wproj = 1;
   bool use_w_term = false;
   //adapting the algorithm
   bool update_output = false;  // save output after each iteration
   bool adapt_gamma = true;     // update gamma/stepsize
   bool run_diagnostic = false; // save and output diagnostic information
   bool algo_update = true;     // if to use lambda function to record/update algorithm variables
+  bool warmstart = false;     // if to use warmstart, not sure if this would work with reweighting as implimented
   bool no_reweighted = true;   // if to use reweighting
   t_real relative_gamma_adapt = 0.01;
   t_int adapt_iter = 100;
@@ -57,6 +63,7 @@ struct Params {
   t_real relative_variation = 5e-3; // relative difference in model for convergence
   t_real residual_convergence = 1; // max l2 norm reisudals can have for convergence, -1 means it will choose epsilon by default
   t_real epsilon = 0;
+  bool positive = true;
 };
 
 static struct option long_options[] = {
@@ -76,6 +83,9 @@ static struct option long_options[] = {
     {"l2_bound", required_argument, 0, 'i'},
     {"diagnostic", no_argument, 0, 'j'},
     {"power_iterations", required_argument, 0, 'k'},
+    {"use_w_term", no_argument, 0, 'l'},
+    {"energy_fraction_chirp", required_argument, 0, 'm'},
+    {"energy_fraction_wproj", required_argument, 0, '6'},
     {"primary_beam", required_argument, 0, 'n'},
     {"fft_grid_correction", no_argument, 0, 'o'},
     {"width", required_argument, 0, 'p'},
@@ -89,6 +99,10 @@ static struct option long_options[] = {
     {"relative_gamma_adapt", required_argument, 0, 'x'},
     {"adapt_iter", required_argument, 0, 'y'},
     {"fftw_plan", required_argument, 0, '1'},
+    {"grad", required_argument, 0, '2'},
+    {"warmstart",no_argument, 0, '3'},
+    {"non_positive",no_argument, 0, '4'},
+    {"channel_averaging", required_argument, 0 ,'5'},
     {0, 0, 0, 0}};
 
 std::string usage();

@@ -16,7 +16,6 @@
 
 #include "catch.hpp"
 using namespace ::casacore;
-
 using namespace purify::notinstalled;
 TEST_CASE("Casacore") {
   // create the table descriptor
@@ -39,7 +38,7 @@ TEST_CASE("Casacore") {
   feed.putScalar(rownr, 1);
   // Access a subtable
   casa::ArrayColumn<casa::Double> antpos(simpleMS.antenna(),
-                                         casa::MSAntenna::columnName(casa::MSAntenna::POSITION));
+      casa::MSAntenna::columnName(casa::MSAntenna::POSITION));
   simpleMS.antenna().addRow();
   casa::Array<casa::Double> position(casa::IPosition(1, 3));
   position(casa::IPosition(1, 0)) = 1.;
@@ -49,168 +48,184 @@ TEST_CASE("Casacore") {
 }
 
 class TmpPath {
-public:
-  TmpPath()
+  public:
+    TmpPath()
       : path_(boost::filesystem::unique_path(boost::filesystem::temp_directory_path()
-                                             / "%%%%-%%%%-%%%%-%%%%.ms")) {}
-  ~TmpPath() {
-    if(boost::filesystem::exists(path()))
-      boost::filesystem::remove_all(path());
-  }
-  boost::filesystem::path const &path() const { return path_; }
+            / "%%%%-%%%%-%%%%-%%%%.ms")) {}
+    ~TmpPath() {
+      if(boost::filesystem::exists(path()))
+        boost::filesystem::remove_all(path());
+    }
+    boost::filesystem::path const &path() const { return path_; }
 
-private:
-  boost::filesystem::path path_;
+  private:
+    boost::filesystem::path path_;
 };
 
 class TmpMS : public TmpPath {
-public:
-  TmpMS() : TmpPath() {
-    casa::TableDesc simpleDesc = casa::MS::requiredTableDesc();
-    casa::SetupNewTable newTab(path().string(), simpleDesc, casa::Table::New);
-    ms_.reset(new casa::MeasurementSet(newTab));
-    ms_->createDefaultSubtables(casa::Table::New);
-  }
-  casa::MeasurementSet const &operator*() const { return *ms_; }
-  casa::MeasurementSet &operator*() { return *ms_; }
+  public:
+    TmpMS() : TmpPath() {
+      casa::TableDesc simpleDesc = casa::MS::requiredTableDesc();
+      casa::SetupNewTable newTab(path().string(), simpleDesc, casa::Table::New);
+      ms_.reset(new casa::MeasurementSet(newTab));
+      ms_->createDefaultSubtables(casa::Table::New);
+    }
+    casa::MeasurementSet const &operator*() const { return *ms_; }
+    casa::MeasurementSet &operator*() { return *ms_; }
 
-  casa::MeasurementSet const *operator->() const { return ms_.get(); }
-  casa::MeasurementSet *operator->() { return ms_.get(); }
+    casa::MeasurementSet const *operator->() const { return ms_.get(); }
+    casa::MeasurementSet *operator->() { return ms_.get(); }
 
-protected:
-  std::unique_ptr<casa::MeasurementSet> ms_;
+  protected:
+    std::unique_ptr<casa::MeasurementSet> ms_;
 };
 
 TEST_CASE("Size/Number of channels") {
-  CHECK(purify::casa::MeasurementSet(purify::notinstalled::ngc3256_ms()).size() == 128);
+  CHECK(purify::casa::MeasurementSet(purify::notinstalled::ngc5921_2_ms()).size() == 63);
 }
 
 TEST_CASE("Single channel") {
   namespace pc = purify::casa;
-  auto const ms = pc::MeasurementSet(purify::notinstalled::ngc3256_ms());
+  auto const ms = pc::MeasurementSet(purify::notinstalled::ngc5921_2_ms());
   SECTION("Check channel validity") {
-    CHECK(not pc::MeasurementSet::const_iterator::value_type(0, ms).is_valid());
+    //CHECK(not pc::MeasurementSet::const_iterator::value_type(0, ms).is_valid());
     CHECK(pc::MeasurementSet::const_iterator::value_type(17, ms).is_valid());
   }
   SECTION("Raw UVW") {
     auto const channel = pc::MeasurementSet::const_iterator::value_type(17, ms);
-    REQUIRE(channel.size() == 141059);
+    REQUIRE(channel.size() == 12852);
     auto const u = channel.raw_u();
-    REQUIRE(u.size() == 141059);
-    CHECK(std::abs(u[0] + 48.184256396979784) < 1e-8);
-    CHECK(std::abs(u[20000] + 34.078338234565763) < 1e-8);
+    REQUIRE(u.size() == 12852);
+    CHECK(std::abs(u[0]) < 1e-8);
+    CHECK(std::abs(u[10000] - 81.7386695336412145707072340883314609527587890625) < 1e-8);
     auto const v = channel.raw_v();
-    REQUIRE(v.size() == 141059);
-    CHECK(std::abs(v[0] + 2.8979287890493985) < 1e-8);
-    CHECK(std::abs(v[20000] - 45.856539171696184) < 1e-8);
+    REQUIRE(v.size() == 12852);
+    CHECK(std::abs(v[0]) < 1e-8);
+    CHECK(std::abs(v[10000] - -22.980947660874132765229660435579717159271240234375) < 1e-8);
   }
 
   SECTION("Raw frequencies") {
     auto const f0 = pc::MeasurementSet::const_iterator::value_type(0, ms).raw_frequencies();
-    CHECK(f0.size() == 4);
-    CHECK(std::abs(f0(0) - 113211987500.0) < 1e-1);
-    CHECK(std::abs(f0(1) - 111450812500.10001) < 1e-4);
+    CHECK(f0.size() == 1);
+    CHECK(std::abs(f0(0) - 1412665073.768775463104248046875) < 1e-1);
+    //CHECK(std::abs(f0(1) - 111450812500.10001) < 1e-4);
 
     auto const f17 = pc::MeasurementSet::const_iterator::value_type(17, ms).raw_frequencies();
-    CHECK(f17.size() == 4);
-    CHECK(std::abs(f17(0) - 113477612500.0) < 1e-1);
-    CHECK(std::abs(f17(1) - 111716437500.10001) < 1e-4);
+    CHECK(f17.size() == 1);
+    CHECK(std::abs(f17(0) - 1413080112.831275463104248046875) < 1e-1);
+    //CHECK(std::abs(f17(1) - 111716437500.10001) < 1e-4);
   }
 
   SECTION("data desc id") {
-    REQUIRE(pc::MeasurementSet::const_iterator::value_type(0, ms).data_desc_id().size() == 0);
-    REQUIRE(pc::MeasurementSet::const_iterator::value_type(17, ms).data_desc_id().size() == 141059);
+    REQUIRE(pc::MeasurementSet::const_iterator::value_type(0, ms).data_desc_id().size() == 12852);
+    REQUIRE(pc::MeasurementSet::const_iterator::value_type(17, ms).data_desc_id().size() == 12852);
   }
 
   SECTION("I") {
     using namespace purify;
     auto const I = pc::MeasurementSet::const_iterator::value_type(17, ms).I();
-    REQUIRE(I.size() == 141059);
-    CHECK(std::abs(I(0) - t_complex(-0.30947005748748779, -0.10632525384426117)) < 1e-12);
-    CHECK(std::abs(I(10) - t_complex(0.31782057881355286, 0.42863702774047852)) < 1e-12);
+    REQUIRE(I.size() == 12852);
+    CHECK(std::abs(I(0) - (t_complex(70.09417724609375,0) + t_complex(67.90460968017578125,0))) < 1e-4);
+    CHECK(std::abs(I(10) - (t_complex(69.5322723388671875,0) + t_complex(68.62453460693359375,0))) < 1e-4);
 
-    REQUIRE(pc::MeasurementSet::const_iterator::value_type(0, ms).I().size() == 0);
+    REQUIRE(pc::MeasurementSet::const_iterator::value_type(0, ms).I().size() == 12852);
   }
 
   SECTION("wI") {
     using namespace purify;
     auto const wI = pc::MeasurementSet::const_iterator::value_type(17, ms).wI();
-    REQUIRE(wI.size() == 141059);
+    REQUIRE(wI.size() == 12852);
     CAPTURE(wI.head(5).transpose());
-    CHECK(wI.isApprox(0.5 * purify::Vector<t_real>::Ones(wI.size())));
+    CHECK(wI.isApprox(0.0363696478307247161865234375 * 0.5 * purify::Vector<t_real>::Ones(wI.size())));
   }
 
   SECTION("frequencies") {
     using namespace purify;
     auto const f = pc::MeasurementSet::const_iterator::value_type(17, ms).frequencies();
-    REQUIRE(f.size() == 141059);
-    CHECK(std::abs(f(0) - 113477612500.0) < 1e-0);
-    CHECK(std::abs(f(1680) - 111716437500.10001) < 1e-0);
-    CHECK(std::abs(f(3360) - 101240562499.89999) < 1e-0);
-    CHECK(std::abs(f(5040) - 102785237500.0) < 1e-0);
+    REQUIRE(f.size() == 12852);
+    CHECK(std::abs(f(0) - 1413080112.831275463104248046875) < 1e-0);
+    CHECK(std::abs(f(1680) - 1413080112.831275463104248046875) < 1e-0);
+    CHECK(std::abs(f(3360) - 1413080112.831275463104248046875) < 1e-0);
+    CHECK(std::abs(f(5040) - 1413080112.831275463104248046875) < 1e-0);
   }
 }
 
 TEST_CASE("Measurement channel") {
   using namespace purify;
-  REQUIRE(not purify::casa::MeasurementSet(purify::notinstalled::ngc3256_ms())[0].is_valid());
-  auto const channel = purify::casa::MeasurementSet(purify::notinstalled::ngc3256_ms())[17];
+  //REQUIRE(not purify::casa::MeasurementSet(purify::notinstalled::ngc5921_2_ms())[0].is_valid());
+  auto const channel = purify::casa::MeasurementSet(purify::notinstalled::ngc5921_2_ms())[17];
   REQUIRE(channel.is_valid());
   auto const I = channel.I();
-  REQUIRE(I.size() == 141059);
-  CHECK(std::abs(I(0) - t_complex(-0.30947005748748779, -0.10632525384426117)) < 1e-12);
-  CHECK(std::abs(I(10) - t_complex(0.31782057881355286, 0.42863702774047852)) < 1e-12);
+  REQUIRE(I.size() == 12852);
+  CHECK(std::abs(I(0) - (t_complex(70.09417724609375,0) + t_complex(67.90460968017578125,0))) < 1e-4);
+  CHECK(std::abs(I(10) - (t_complex(69.5322723388671875,0) + t_complex(68.62453460693359375,0))) < 1e-4);
 }
 
 TEST_CASE("Channel iteration") {
   std::vector<int> const valids{
-      17,  18,  19,  20,  21,  22,  23,  24,  25,  26,  27,  28,  29,  30,  31,  32,  33,  34,
-      35,  36,  37,  38,  39,  40,  41,  42,  43,  44,  45,  46,  47,  48,  49,  50,  51,  52,
-      53,  54,  55,  56,  57,  58,  59,  60,  61,  62,  63,  64,  65,  66,  67,  68,  69,  70,
-      71,  72,  73,  74,  75,  76,  77,  78,  79,  80,  81,  82,  83,  84,  85,  86,  87,  88,
-      89,  90,  91,  92,  93,  94,  95,  96,  97,  98,  99,  100, 101, 102, 103, 104, 105, 106,
-      107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124};
-  auto const ms = purify::casa::MeasurementSet(purify::notinstalled::ngc3256_ms());
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+    17,  18,  19,  20,  21,  22,  23,  24,  25,  26,  27,  28,  29,  30,  31,  32,  33,  34,
+    35,  36,  37,  38,  39,  40,  41,  42,  43,  44,  45,  46,  47,  48,  49,  50,  51,  52,
+    53,  54,  55,  56,  57,  58,  59,  60,  61,  62, 63};
+  auto const ms = purify::casa::MeasurementSet(purify::notinstalled::ngc5921_2_ms());
   auto i_channel = ms.begin();
   auto const i_end = ms.end();
   for(; i_channel < i_end; i_channel += 10) {
-    CHECK(i_channel->channel() < 128);
+    CAPTURE(i_channel->channel());
+    CHECK(i_channel->channel() < 63);
     bool const is_valid
-        = std::find(valids.begin(), valids.end(), i_channel->channel()) != valids.end();
+      = std::find(valids.begin(), valids.end(), i_channel->channel()) != valids.end();
     CHECK(is_valid == i_channel->is_valid());
   }
 }
 
-// TEST_CASE("Read Measurement") {
-//   purify::utilities::vis_params const vis_file =
-//   purify::utilities::read_visibility(vla_filename("at166B.3C129.c0I.vis"));
-//   purify::utilities::vis_params const ms_file =
-//   purify::casa::read_measurementset(vla_filename("at166B.3C129.c0.ms"),
-//   purify::casa::MeasurementSet::ChannelWrapper::polarization::I);
-//
-//   REQUIRE(vis_file.u.size() == ms_file.u.size());
-//
-//   CHECK(vis_file.u.isApprox(ms_file.u, 1e-6));
-//   CHECK(vis_file.v.isApprox(ms_file.v, 1e-6));
-//   CHECK(vis_file.vis.isApprox(ms_file.vis, 1e-6));
-//   purify::utilities::vis_params const ms_fileLL =
-//   purify::casa::read_measurementset(vla_filename("at166B.3C129.c0.ms"),
-//   purify::casa::MeasurementSet::ChannelWrapper::polarization::LL);
-//   purify::utilities::vis_params const ms_fileRR =
-//   purify::casa::read_measurementset(vla_filename("at166B.3C129.c0.ms"),
-//   purify::casa::MeasurementSet::ChannelWrapper::polarization::RR);
-//   purify::Vector<purify::t_complex> const weights = (1./(1./ms_fileLL.weights.array() +
-//   1./ms_fileRR.weights.array())).matrix();
-//   CHECK(vis_file.weights.real().isApprox(weights.real(), 1e-6));
-// }
+TEST_CASE("Read Measurement") {
+  if (boost::filesystem::exists(purify::notinstalled::ngc5921_2_vis())) {
+    purify::utilities::vis_params const vis_file =
+    purify::utilities::read_visibility(purify::notinstalled::ngc5921_2_vis());
+    purify::utilities::vis_params const ms_file =
+    purify::casa::read_measurementset(purify::notinstalled::ngc5921_2_ms());
+
+    REQUIRE(vis_file.u.size() == ms_file.u.size());
+    CAPTURE(vis_file.u.tail(5));
+    CAPTURE(ms_file.u.tail(5));
+    CAPTURE(ms_file.u(1000)/vis_file.u(1000));
+    CAPTURE(ms_file.vis(1000)/vis_file.vis(1000));
+    CAPTURE(ms_file.weights(1000)/vis_file.weights(1000));
+    CHECK(vis_file.u.isApprox(ms_file.u, 1e-3));
+    CHECK(vis_file.v.isApprox(ms_file.v, 1e-3));
+    CHECK(vis_file.vis.isApprox(ms_file.vis, 1e-6));
+    CHECK(vis_file.weights.real().isApprox(ms_file.weights.real(), 1e-6));
+  }
+}
 
 TEST_CASE("Direction") {
-  auto const ms = purify::casa::MeasurementSet(purify::notinstalled::ngc3256_ms());
+  auto const ms = purify::casa::MeasurementSet(purify::notinstalled::ngc5921_2_ms());
   auto const direction = ms.direction();
   auto const right_ascension = ms.right_ascension();
   auto const declination = ms.declination();
-  CHECK(std::abs(right_ascension - 2.7395560603928995) < 1e-8);
-  CHECK(std::abs(declination + 0.76628680808811045) < 1e-8);
-  CHECK(std::abs(direction[0] - 2.7395560603928995) < 1e-8);
-  CHECK(std::abs(direction[1] + 0.76628680808811045) < 1e-8);
+  CHECK(std::abs(right_ascension - -2.260201381332657799561047795577906072139739990234375) < 1e-8);
+  CHECK(std::abs(declination - 0.0884300154343793665123740765920956619083881378173828125) < 1e-8);
+  CHECK(std::abs(direction[0] - -2.260201381332657799561047795577906072139739990234375) < 1e-8);
+  CHECK(std::abs(direction[1] - 0.0884300154343793665123740765920956619083881378173828125) < 1e-8);
 }
+
+namespace purify{
+TEST_CASE("Reading channels"){
+  purify::logging::initialize();
+  purify::utilities::vis_params const uv_data = purify::casa::read_measurementset(ngc5921_2_ms(), purify::casa::MeasurementSet::ChannelWrapper::polarization::I, std::vector<t_int>());
+  std::vector<purify::utilities::vis_params> const uv_channels = purify::casa::read_measurementset_channels(ngc5921_2_ms(), purify::casa::MeasurementSet::ChannelWrapper::polarization::I, 1);
+  t_int vis_i = 0;
+  for (t_int channel = 0; channel < uv_channels.size(); channel++) {
+    auto const channel_data = uv_channels[channel].vis;
+    CHECK(not channel_data.isApprox(purify::Vector<t_complex>::Zero(channel_data.size())));
+    for (t_int i = 0; i < channel_data.size(); i++) {
+      //Testing if data in channels is the same as reading all the data at once.
+      CHECK(uv_data.vis(vis_i) == channel_data(i));
+      vis_i++;
+    }
+  }
+  //Check that all data has been compared.
+  CHECK(vis_i == uv_data.vis.size());
+}
+};

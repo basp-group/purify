@@ -12,7 +12,8 @@ std::string usage() {
          "measurement set). \n\n"
          "--name: path of file output. (required) \n\n"
          "--niters: number of iterations. \n\n"
-         "--stokes: choice of stokes I, Q, U, or V (I is default). \n\n"
+         "--stokes: choice of stokes I, Q, U, or V (I is default). You can also choose linear"
+         " or cicular polarsiations. It is also possible to choose P.\n\n"
          "--cellsize: the dimensions of a pixel in arcseconds. \n\n"
          "--size: image size in pixels. \n\n"
          "--width: image width in pixels. \n\n"
@@ -30,6 +31,7 @@ std::string usage() {
          "analytic formula. \n\n"
          "--kernel: Type of gridding kernel to use, kb, gauss, pswf, box. (kb is default) \n\n"
          "--kernel_support: Support of kernel in grid cells. (4 is the default) \n\n"
+         "--grad: To reconstruct the gradient of x, y, or none (none is default). Should work for linear polarisation P. \n\n"
          "--logging_level: Determines the output logging level for sopt and purify. (\"debug\" is "
          "the default) \n\n";
 }
@@ -83,7 +85,7 @@ Params parse_cmdl(int argc, char **argv) {
       break;
     
     case 'e':
-      params.name = params.stokes;
+      params.stokes = optarg;
       break;
 
     case 'f':
@@ -118,10 +120,17 @@ Params parse_cmdl(int argc, char **argv) {
       break;
 
     case 'm':
-      params.energy_fraction = std::stod(optarg);
-      if(params.energy_fraction <= 0 or params.energy_fraction > 1) {
-        std::printf("Wrong energy fraction! %f", params.energy_fraction);
-        params.energy_fraction = 1;
+      params.energy_fraction_chirp = std::stod(optarg);
+      if(params.energy_fraction_chirp <= 0 or params.energy_fraction_chirp > 1) {
+        std::printf("Wrong energy fraction! %f", params.energy_fraction_chirp);
+        params.energy_fraction_chirp = 0.99999;
+      }
+      break;
+    case '6': // ARWA added case 
+      params.energy_fraction_wproj = std::stod(optarg);
+      if(params.energy_fraction_wproj <= 0 or params.energy_fraction_wproj > 1) {
+        std::printf("Wrong energy fraction! %f", params.energy_fraction_wproj);
+        params.energy_fraction_wproj = 1;
       }
       break;
 
@@ -178,6 +187,19 @@ break;
       params.fftw_plan = optarg;
       break;
 
+    case '2':
+      params.gradient = optarg;
+      break;
+
+    case '3':
+      params.warmstart = true;
+      break;
+    case '4':
+      params.positive = false;
+      break;
+    case '5':
+      params.channel_averaging = std::stod(optarg);
+      break;
     case '?':
       /* getopt_long already printed an error message. */
       break;
